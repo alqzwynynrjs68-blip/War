@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>دليل خريطة المحافظات والأقضية العراقية | Iraqi Interactive Map</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Leaflet CSS & JS for Interactive Map Rendering -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Readex+Pro:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="./shared.css">
+
+    <style media="not all">
+        body {
+            font-family: 'Readex Pro', sans-serif;
+        }
+
+        .font-mono-num {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        /* Dark Theme Leaflet Customization */
+        .leaflet-container {
+            background: #090d16 !important;
+            font-family: 'Readex Pro', sans-serif;
+        }
+
+        .custom-tooltip {
+            background: rgba(15, 23, 42, 0.95) !important;
+            border: 1px solid rgba(51, 65, 85, 0.8) !important;
+            color: #f8fafc !important;
+            border-radius: 12px !important;
+            padding: 8px 12px !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+            direction: rtl;
+        }
+
+        .leaflet-tooltip-left::before,
+        .leaflet-tooltip-right::before {
+            display: none !important;
+        }
+
+        body.light-mode {
+            background: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+
+        body.light-mode [class*="bg-slate-900"],
+        body.light-mode [class*="bg-slate-950"] {
+            background-color: rgba(255, 255, 255, 0.88) !important;
+        }
+
+        body.light-mode [class*="text-white"] { color: #0f172a !important; }
+        body.light-mode [class*="text-slate-100"],
+        body.light-mode [class*="text-slate-200"],
+        body.light-mode [class*="text-slate-300"] { color: #334155 !important; }
+        body.light-mode [class*="text-slate-400"] { color: #475569 !important; }
+        body.light-mode [class*="text-slate-500"] { color: #64748b !important; }
+        body.light-mode [class*="bg-slate-800"],
+        body.light-mode [class*="bg-slate-700"] { background-color: #e2e8f0 !important; }
+        body.light-mode [class*="bg-emerald-950"] { background-color: #d1fae5 !important; }
+        body.light-mode [class*="bg-amber-950"] { background-color: #fef3c7 !important; }
+        body.light-mode [class*="text-emerald-300"],
+        body.light-mode [class*="text-emerald-400"] { color: #047857 !important; }
+        body.light-mode [class*="text-amber-200"],
+        body.light-mode [class*="text-amber-300"] { color: #b45309 !important; }
+        body.light-mode [class*="text-sky-300"] { color: #0369a1 !important; }
+        body.light-mode [class*="border-slate-800"],
+        body.light-mode [class*="border-slate-700"] { border-color: #cbd5e1 !important; }
+        body.light-mode [class*="border-emerald-800"] { border-color: #6ee7b7 !important; }
+        body.light-mode [class*="border-amber-800"] { border-color: #fcd34d !important; }
+        body.light-mode pre,
+        body.light-mode code { background-color: #e2e8f0 !important; color: #1e293b !important; }
+        body.light-mode .leaflet-container { background: #dbeafe !important; }
+        body.light-mode .custom-tooltip { background: rgba(255, 255, 255, 0.96) !important; color: #0f172a !important; }
+    </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 min-h-screen relative overflow-x-hidden">
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+
+        <!-- Top Header -->
+        <header class="mb-8 text-center max-w-3xl mx-auto">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-white mb-2 leading-tight">
+                <span data-i18n-content="pageTitle">🇮🇶 الخريطة التفاعلية للمحافظات والأقضية</span>
+            </h1>
+            <p class="text-slate-400 text-sm">
+                مرر المؤشر فوق المحافظة لمشاهدة التفاصيل والأقضية التابعة لها تلقائياً
+            </p>
+        </header>
+
+        <div class="top-toolbar" aria-label="أدوات الصفحة والتنقل">
+            <nav class="top-navigation" aria-label="التنقل في الصفحة">
+                <a href="#data-browser" class="text-xs text-slate-300 bg-slate-900 border border-slate-800 hover:border-slate-600 px-3 py-1.5 rounded-lg transition">استعراض البيانات</a>
+                <a href="#documentation" class="text-xs text-slate-300 bg-slate-900 border border-slate-800 hover:border-slate-600 px-3 py-1.5 rounded-lg transition">التوثيق الكامل</a>
+                <a href="#usage" class="text-xs text-slate-300 bg-slate-900 border border-slate-800 hover:border-slate-600 px-3 py-1.5 rounded-lg transition">أمثلة الاستخدام</a>
+            </nav>
+            <div class="top-controls">
+                <label class="language-switcher">
+                    <button id="languageToggle" type="button" class="language-trigger" aria-label="اختيار اللغة" aria-haspopup="true" aria-expanded="false">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"></circle><path stroke-linecap="round" d="M3 12h18M12 3c2.2 2.4 3.3 5.4 3.3 9s-1.1 6.6-3.3 9c-2.2-2.4-3.3-5.4-3.3-9S9.8 5.4 12 3Z"></path></svg>
+                        <span data-language-current>English</span>
+                        <span class="language-chevron" aria-hidden="true"></span>
+                    </button>
+                    <div id="languageMenu" class="language-menu" role="menu" aria-hidden="true">
+                        <button type="button" role="menuitem" data-language="ar">العربية<span class="language-check" aria-hidden="true">✓</span></button>
+                        <button type="button" role="menuitem" data-language="en">English<span class="language-check" aria-hidden="true">✓</span></button>
+                        <button type="button" role="menuitem" data-language="ku">کوردی<span class="language-check" aria-hidden="true">✓</span></button>
+                    </div>
+                </label>
+                <button id="themeToggle" type="button" class="theme-toggle text-xs text-amber-300 bg-amber-950/50 border border-amber-800/50 hover:bg-amber-900/60 px-3 py-1.5 rounded-lg transition" aria-label="تفعيل الوضع الفاتح" title="تفعيل الوضع الفاتح" aria-pressed="false">
+                    <svg class="theme-icon theme-icon-sun" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.5"></circle><path stroke-linecap="round" d="M12 2v2.2M12 19.8V22M4.93 4.93l1.55 1.55M17.52 17.52l1.55 1.55M2 12h2.2M19.8 12H22M4.93 19.07l1.55-1.55M17.52 6.48l1.55-1.55"></path></svg>
+                    <svg class="theme-icon theme-icon-moon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20.5 15.3A8.5 8.5 0 0 1 8.7 3.5 8.5 8.5 0 1 0 20.5 15.3Z"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Map & Details Container -->
+        <div id="data-browser" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+
+            <!-- Interactive Leaflet Map Box -->
+            <div class="lg:col-span-2 bg-slate-900/80 border border-slate-800/80 rounded-2xl p-3 backdrop-blur-md shadow-2xl relative">
+                <div id="map" class="h-[420px] sm:h-[500px] w-full rounded-xl z-10"></div>
+
+                <!-- Floating Hover Card on Map -->
+                <div id="hoverCard"
+                    class="absolute bottom-6 right-6 z-20 bg-slate-950/90 border border-slate-800 backdrop-blur-xl p-4 rounded-xl max-w-xs w-full shadow-2xl hidden transition-all pointer-events-none">
+                    <span
+                        class="text-[10px] text-emerald-400 font-mono font-semibold uppercase tracking-wider block mb-1">المحافظة
+                        المحددة</span>
+                    <h3 id="hoverName" class="text-lg font-bold text-white mb-1">-</h3>
+                    <p id="hoverDetails" class="text-xs text-slate-400">-</p>
+                </div>
+            </div>
+
+            <!-- Quick Info / Selected City Sidebar -->
+            <div
+                class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5 flex flex-col justify-between backdrop-blur-md">
+                <div>
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+                        <span class="text-xs font-semibold text-slate-400">لوحة الاستعراض السريع</span>
+                        <span
+                            class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800/40 px-2 py-0.5 rounded-full font-mono-num">
+                            تحديث حي
+                        </span>
+                    </div>
+
+                    <div id="sidebarContent">
+                        <div class="text-center py-12 text-slate-500">
+                            <svg class="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                            </svg>
+                            <p class="text-xs">ضع مؤشر الماوس فوق أي محافظة في الخريطة لعرض الأقضية مباشرة</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-800/80 text-center">
+                    <button id="resetViewBtn"
+                        class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl transition w-full">
+                        إعادة ضبط زاوية الخريطة
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Search Bar -->
+        <div class="max-w-3xl mx-auto mb-8">
+            <div class="relative bg-slate-900/90 border border-slate-800 rounded-2xl p-2 shadow-2xl backdrop-blur-xl">
+                <input type="text" id="searchInput" placeholder="ابحث باسم المحافظة، القضاء، أو الناحية..."
+                    class="w-full bg-transparent border-none text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-0 px-3 py-1.5" />
+            </div>
+        </div>
+
+        <!-- Data Grid -->
+        <div id="citiesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+        <!-- Full Documentation -->
+        <section id="documentation" class="mt-16 border-t border-slate-800/80 pt-10 scroll-mt-6">
+            <div class="max-w-4xl mx-auto">
+                <div class="mb-8">
+                    <span class="text-xs text-emerald-400 font-mono uppercase tracking-wider">مرجع البيانات</span>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-white mt-2 mb-3">توثيق قاعدة بيانات المدن والأقضية العراقية</h2>
+                    <p class="text-sm leading-7 text-slate-400">
+                        هذا المستودع يوفر بيانات JSON مفتوحة للمحافظات العراقية والأقضية والنواحي التابعة لها، مع معرفات ثابتة مناسبة لنماذج العناوين، وتكاملات التوصيل، والبحث الجغرافي. الأسماء المعروضة محفوظة باللغة العربية كما وردت في البيانات.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+                    <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4"><div class="text-2xl font-mono-num font-bold text-emerald-400" data-stat="cities">18</div><div class="text-xs text-slate-500 mt-1">محافظة مسجلة</div></div>
+                    <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4"><div class="text-2xl font-mono-num font-bold text-sky-400" data-stat="districts">3,933</div><div class="text-xs text-slate-500 mt-1">سجل قضاء وناحية</div></div>
+                    <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4"><div class="text-2xl font-mono-num font-bold text-amber-400">18</div><div class="text-xs text-slate-500 mt-1">ملف محافظة</div></div>
+                    <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4"><div class="text-2xl font-mono-num font-bold text-rose-400">1</div><div class="text-xs text-slate-500 mt-1">ملف GeoJSON</div></div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <article class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
+                        <h3 class="text-lg font-bold text-white mb-3">هيكل المجلدات والملفات</h3>
+                        <pre dir="ltr" class="ltr-content font-mono-num text-xs leading-7 text-slate-300 bg-slate-950/70 rounded-xl p-4 overflow-x-auto">data/
+├── cities.json
+├── &lt;id&gt;-&lt;key&gt;.json
+└── geoBoundaries-IRQ-ADM1_simplified.geojson
+examples/
+├── data/najaf-sample.json
+├── javascript/read.js
+└── python/read.py
+scripts/validate.js</pre>
+                        <p data-i18n-content="folderDescription" class="text-xs text-slate-400 leading-6 mt-4">ملف <span class="text-emerald-300">cities.json</span> هو سجل المحافظات. لكل سجل ملف أقضية يطابق اسمه قيمة <span class="text-emerald-300">id-key</span>، مثل <span class="text-emerald-300">1-NJF.json</span>.</p>
+                    </article>
+
+                    <article class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
+                        <h3 data-i18n-content="relationshipsTitle" class="text-lg font-bold text-white mb-3">قواعد العلاقة بين الملفات</h3>
+                        <ol class="text-sm text-slate-300 leading-8 list-decimal pr-5">
+                            <li data-i18n-content="relationshipStateId">قيمة <code class="text-emerald-300">state_id</code> في كل قضاء تساوي <code class="text-emerald-300">id</code> للمحافظة.</li>
+                            <li data-i18n-content="relationshipFilename">بادئة وامتداد اسم ملف المحافظة يطابقان <code class="text-emerald-300">id</code> و<code class="text-emerald-300">key</code>.</li>
+                            <li data-i18n-content="relationshipUniqueIds">معرفات الأقضية فريدة على مستوى مجموعة البيانات.</li>
+                            <li>الملفات JSON بترميز UTF-8 وبمصفوفة في المستوى الأعلى.</li>
+                        </ol>
+                    </article>
+                </div>
+
+                <div class="mb-8">
+                    <h3 class="text-lg font-bold text-white mb-3">دليل ملفات المشروع</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <a href="./README.md" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">README.md</div><div data-i18n-content="fileReadme" class="text-xs text-slate-500 mt-1">نظرة عامة، التشغيل، الترخيص، والملاحظات</div></a>
+                        <a href="./README_ar.md" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">README_ar.md</div><div data-i18n-content="fileReadmeAr" class="text-xs text-slate-500 mt-1">نسخة README باللغة العربية</div></a>
+                        <a href="./README_ku.md" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">README_ku.md</div><div data-i18n-content="fileReadmeKu" class="text-xs text-slate-500 mt-1">نسخة README بالكوردية السورانية</div></a>
+                        <a href="./DATA_DICTIONARY.md" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">DATA_DICTIONARY.md</div><div class="text-xs text-slate-500 mt-1">تعريف الحقول وقواعد العلاقات</div></a>
+                        <a href="./DATA_DICTIONARY_ar.md" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">DATA_DICTIONARY_ar.md</div><div data-i18n-content="fileDictionaryAr" class="text-xs text-slate-500 mt-1">قاموس البيانات بالعربية</div></a>
+                        <a href="./DATA_DICTIONARY_ku.md" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">DATA_DICTIONARY_ku.md</div><div data-i18n-content="fileDictionaryKu" class="text-xs text-slate-500 mt-1">فەرهەنگی داتا بە کوردی</div></a>
+                        <a href="./package.json" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">package.json</div><div class="text-xs text-slate-500 mt-1">بيانات المشروع وأمر التحقق</div></a>
+                        <a href="./scripts/validate.js" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">scripts/validate.js</div><div class="text-xs text-slate-500 mt-1">فحص JSON والمفاتيح والروابط</div></a>
+                        <a href="./CONTRIBUTING.md" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">CONTRIBUTING.md</div><div data-i18n-content="fileContributing" class="text-xs text-slate-500 mt-1">قواعد المساهمة باللغة الإنجليزية</div></a>
+                        <a href="./CONTRIBUTING_ar.md" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">CONTRIBUTING_ar.md</div><div data-i18n-content="fileContributingAr" class="text-xs text-slate-500 mt-1">قواعد المساهمة بالعربية</div></a>
+                        <a href="./CONTRIBUTING_ku.md" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">CONTRIBUTING_ku.md</div><div data-i18n-content="fileContributingKu" class="text-xs text-slate-500 mt-1">ڕێنمایی بەشداری بە کوردی</div></a>
+                        <a href="./examples/javascript/read.js" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">examples/javascript/read.js</div><div class="text-xs text-slate-500 mt-1">مثال قراءة البيانات باستخدام Node.js</div></a>
+                        <a href="./examples/python/read.py" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">examples/python/read.py</div><div class="text-xs text-slate-500 mt-1">مثال قراءة البيانات باستخدام Python</div></a>
+                        <a href="./examples/data/najaf-sample.json" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">examples/data/najaf-sample.json</div><div class="text-xs text-slate-500 mt-1">بيانات صغيرة للاختبارات والأمثلة</div></a>
+                        <a href="./shared.css" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">shared.css</div><div class="text-xs text-slate-500 mt-1">الأنماط المشتركة والوضعان الداكن والفاتح</div></a>
+                        <a href="./shared.js" target="_blank" rel="noopener" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">shared.js</div><div class="text-xs text-slate-500 mt-1">منطق الخريطة والبيانات والبحث المشترك</div></a>
+                        <a href="./index.html" class="bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl p-3 transition"><div class="text-xs text-emerald-300 font-mono-num">index.html</div><div class="text-xs text-slate-500 mt-1">واجهة الاستعراض والخريطة والتوثيق التفاعلي باللغتين</div></a>
+                    </div>
+                </div>
+
+                <div class="mb-8">
+                    <h3 class="text-lg font-bold text-white mb-3">قائمة ملفات البيانات</h3>
+                    <div id="fileList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"></div>
+                    <div data-i18n-content="geoJsonDescription" class="mt-3 bg-slate-900/50 border border-slate-800/70 rounded-xl p-3 text-xs text-slate-400">
+                        <span class="text-sky-300 font-mono-num">geoBoundaries-IRQ-ADM1_simplified.geojson</span> يحتوي حدود المحافظات بصيغة GeoJSON. يستخدم التطبيق <code class="text-slate-200">properties.shapeISO</code>، مثل <code class="text-slate-200">IQ-KA</code>، لربط الشكل بالمحافظة في <code class="text-slate-200">cities.json</code>. الملف يحدد الحدود فقط ولا يضيف إحداثيات داخل سجلات المدن أو الأقضية.
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <article class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
+                        <h3 class="text-lg font-bold text-white mb-3">بنية سجل المحافظة</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-right">
+                                <thead class="text-slate-500 border-b border-slate-800"><tr><th data-i18n-content="fieldHeader" class="py-2">الحقل</th><th data-i18n-content="typeHeader" class="py-2">النوع</th><th data-i18n-content="descriptionHeader" class="py-2">الوصف</th></tr></thead>
+                                <tbody class="text-slate-300 divide-y divide-slate-800/70">
+                                    <tr><td class="py-2 text-emerald-300">id</td><td>integer</td><td>معرف المحافظة</td></tr>
+                                    <tr><td class="py-2 text-emerald-300">name</td><td>string</td><td>الاسم العربي</td></tr>
+                                    <tr><td class="py-2 text-emerald-300">key</td><td>string</td><td>رمز لاتيني من 3 أحرف</td></tr>
+                                    <tr><td class="py-2 text-emerald-300">iso_code</td><td>string</td><td>رمز ISO، مثل IQ-NA</td></tr>
+                                    <tr><td class="py-2 text-emerald-300">country_id</td><td>integer</td><td>معرف الدولة</td></tr>
+                                    <tr><td class="py-2 text-emerald-300">ebhar_id</td><td>UUID</td><td>معرف تكامل Ebhar</td></tr>
+                                    <tr><td class="py-2 text-emerald-300">alwaseet_id</td><td>integer</td><td>معرف تكامل Alwaseet</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+
+                    <article class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
+                        <h3 class="text-lg font-bold text-white mb-3">بنية سجل القضاء</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-right">
+                                <thead class="text-slate-500 border-b border-slate-800"><tr><th data-i18n-content="fieldHeader" class="py-2">الحقل</th><th data-i18n-content="typeHeader" class="py-2">النوع</th><th data-i18n-content="descriptionHeader" class="py-2">الوصف</th></tr></thead>
+                                <tbody class="text-slate-300 divide-y divide-slate-800/70">
+                                    <tr><td class="py-2 text-emerald-300">id</td><td>integer</td><td>معرف القضاء</td></tr>
+                                    <tr><td class="py-2 text-emerald-300">name</td><td>string</td><td>اسم القضاء أو الناحية</td></tr>
+                                    <tr><td class="py-2 text-emerald-300">state_id</td><td>integer</td><td>مرجع المحافظة</td></tr>
+                                    <tr><td class="py-2 text-emerald-300">is_prime_supported</td><td>boolean</td><td>حالة دعم Prime</td></tr>
+                                    <tr><td class="py-2 text-emerald-300">prime_id</td><td>integer</td><td>معرف Prime</td></tr>
+                                    <tr><td class="py-2 text-emerald-300">ebhar_id</td><td>UUID/null</td><td>معرف Ebhar الاختياري</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+                </div>
+
+                <div id="usage" class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 mb-8 scroll-mt-6">
+                    <h3 class="text-lg font-bold text-white mb-2">أمثلة الاستخدام</h3>
+                    <p class="text-xs text-slate-400 mb-4">لا تحتاج أمثلة Node.js وPython إلى حزم خارجية. شغّلها من جذر المشروع.</p>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div class="code-editor" data-code-editor>
+                            <div class="code-editor-bar"><div class="code-editor-dots"><i></i><i></i><i></i></div><span class="code-editor-file">read.js</span><button type="button" class="code-copy" data-copy-target="js-example">Copy</button></div>
+                            <div class="code-editor-body"><div class="code-lines" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span></div><pre><code id="js-example"><span class="code-keyword">const</span> cities = <span class="code-function">require</span>(<span class="code-string">'./data/cities.json'</span>);
+<span class="code-keyword">const</span> districts = <span class="code-function">require</span>(<span class="code-string">'./data/1-NJF.json'</span>);
+<span class="code-keyword">const</span> najaf = cities.<span class="code-function">find</span>(city =&gt; city.key === <span class="code-string">'NJF'</span>);
+console.<span class="code-function">log</span>(najaf.name, districts.length);</code></pre></div>
+                        </div>
+                        <div class="code-editor" data-code-editor>
+                            <div class="code-editor-bar"><div class="code-editor-dots"><i></i><i></i><i></i></div><span class="code-editor-file">read.py</span><button type="button" class="code-copy" data-copy-target="python-example">Copy</button></div>
+                            <div class="code-editor-body"><div class="code-lines" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div><pre><code id="python-example"><span class="code-keyword">import</span> json
+<span class="code-keyword">from</span> pathlib <span class="code-keyword">import</span> Path
+
+root = Path(<span class="code-string">'data'</span>)
+cities = json.loads((root / <span class="code-string">'cities.json'</span>).read_text(encoding=<span class="code-string">'utf-8'</span>))
+najaf = <span class="code-function">next</span>(city <span class="code-keyword">for</span> city <span class="code-keyword">in</span> cities <span class="code-keyword">if</span> city[<span class="code-string">'key'</span>] == <span class="code-string">'NJF'</span>)</code></pre></div>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-slate-800/70 text-xs text-slate-400">فحص صحة البيانات: <code class="text-emerald-300">npm run validate</code> أو <code class="text-emerald-300">node scripts/validate.js</code></div>
+                </div>
+
+                <div class="bg-amber-950/20 border border-amber-900/40 rounded-2xl p-5 text-xs leading-7 text-slate-300">
+                    <h3 class="text-sm font-bold text-amber-300 mb-2">ملاحظات مهمة</h3>
+                    <ul class="list-disc pr-5">
+                        <li data-i18n-content="stableIdsNote">استخدم <code class="text-amber-200">id</code> و<code class="text-amber-200">key</code> كمعرفات مستقرة، ولا تعتمد على الاسم العربي كمفتاح فريد.</li>
+                        <li data-i18n-content="optionalMappingNote">قد تكون قيمة <code class="text-amber-200">ebhar_id</code> فارغة <code class="text-amber-200">null</code>، وهذا يعني أن الربط الاختياري غير متوفر.</li>
+                        <li>البيانات لا تدعي مصدراً رسمياً أو ضماناً للاكتمال أو جدول تحديث ثابت.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <footer class="site-footer">
+            <span data-i18n-content="footerCredit">Made with <svg class="footer-heart" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 21.35 10.55 20.03C5.4 15.36 2 12.27 2 8.5 2 5.41 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09A6.02 6.02 0 0 1 16.5 3C19.58 3 22 5.41 22 8.5c0 3.77-3.4 6.86-8.55 11.54L12 21.35Z" clip-rule="evenodd"></path></svg> by</span>
+            <a href="https://github.com/tawfek" target="_blank" rel="noopener noreferrer">Tawfeeq .M</a>
+            <span>2026</span>
+        </footer>
+
+    </div>
+
+<script type="application/legacy">
+    const DATA_BASE_URL = './data';
+
+    let citiesList = [];
+    const districtsMap = new Map();
+    let map, geojsonLayer;
+
+    // Layer lookup by city ID
+    const cityLayerMap = new Map();
+
+    let activeSelectedCity = null;
+    let activeLayer = null;
+
+    async function init() {
+        initMap();
+
+        try {
+            const response = await fetch(`${DATA_BASE_URL}/cities.json`);
+            if (!response.ok) throw new Error(`Failed to load cities.json: ${response.status}`);
+
+            const rawCities = await response.json();
+            citiesList = rawCities.map(c => ({ ...c, id: Number(c.id) }));
+
+            await fetchAllDistrictsConcurrently(citiesList);
+
+            renderCities(citiesList);
+            renderDocumentation();
+            await loadLocalGeoJSON();
+
+        } catch (err) {
+            console.error('Initialization error:', err);
+        }
+    }
+
+    function initMap() {
+        map = L.map('map', {
+            center: [33.2232, 43.6793],
+            zoom: 5.5,
+            zoomControl: false,
+            attributionControl: false
+        });
+
+        L.control.zoom({ position: 'topleft' }).addTo(map);
+
+        map.on('click', (e) => {
+            if (e.originalEvent._stopped) return;
+            resetSelection();
+        });
+
+        document.getElementById('resetViewBtn')?.addEventListener('click', () => {
+            resetSelection();
+        });
+    }
+
+    function initTheme() {
+        const toggle = document.getElementById('themeToggle');
+        const storedTheme = localStorage.getItem('theme');
+        const applyTheme = (isLight) => {
+            document.body.classList.toggle('light-mode', isLight);
+            toggle?.setAttribute('aria-pressed', String(isLight));
+            if (toggle) toggle.textContent = isLight ? 'الوضع الداكن' : 'الوضع الفاتح';
+        };
+
+        applyTheme(storedTheme === 'light');
+        toggle?.addEventListener('click', () => {
+            const isLight = !document.body.classList.contains('light-mode');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            applyTheme(isLight);
+        });
+    }
+
+    function resetSelection() {
+        activeSelectedCity = null;
+        if (activeLayer && geojsonLayer) {
+            geojsonLayer.resetStyle(activeLayer);
+            activeLayer = null;
+        }
+        map.setView([33.2232, 43.6793], 5.5);
+        
+        document.querySelectorAll('.city-card').forEach(card => {
+            card.classList.remove('ring-2', 'ring-emerald-500', 'border-emerald-500');
+        });
+
+        const sidebar = document.getElementById('sidebarContent');
+        if (sidebar) {
+            sidebar.innerHTML = `
+                <div class="text-slate-400 text-sm">اختر محافظة من الخريطة لعرض التفاصيل</div>
+            `;
+        }
+    }
+
+    async function loadLocalGeoJSON() {
+        try {
+            const res = await fetch(`${DATA_BASE_URL}/geoBoundaries-IRQ-ADM1_simplified.geojson`);
+            if (!res.ok) throw new Error(`GeoJSON fetch error status: ${res.status}`);
+
+            const geoData = await res.json();
+
+            geojsonLayer = L.geoJSON(geoData, {
+                style: featureStyle,
+                onEachFeature: onEachFeature
+            }).addTo(map);
+
+        } catch (err) {
+            console.error('Failed to load local GeoJSON boundary file:', err);
+        }
+    }
+
+    function featureStyle(feature) {
+        return {
+            fillColor: '#0ea5e9',
+            weight: 1.5,
+            opacity: 0.8,
+            color: '#334155',
+            fillOpacity: 0.25
+        };
+    }
+
+    function highlightStyle() {
+        return {
+            fillColor: '#10b981',
+            fillOpacity: 0.55,
+            weight: 2,
+            color: '#34d399'
+        };
+    }
+
+    function onEachFeature(feature, layer) {
+        const matchedCity = findMatchedCity(feature.properties);
+        const rawGeoName = feature.properties.shapeName || feature.properties.name || feature.properties.shapeISO || 'Governorate';
+        const cityName = matchedCity ? matchedCity.name : rawGeoName;
+
+        if (matchedCity) {
+            cityLayerMap.set(Number(matchedCity.id), layer);
+        }
+
+        const districtState = matchedCity ? districtsMap.get(Number(matchedCity.id)) : null;
+        const districtCount = districtState ? districtState.data.length : 0;
+
+        const tooltipContent = `
+          <div class="text-right pointer-events-none">
+            <div class="font-bold text-sm text-white">${cityName}</div>
+            <div class="text-[11px] text-emerald-400 font-mono mt-0.5">${districtCount} أقضية ونواحي</div>
+          </div>
+        `;
+
+        // Bind tooltip anchored to the exact geographic center of the feature polygon
+        layer.bindTooltip(tooltipContent, {
+            permanent: false,
+            direction: 'center',
+            sticky: false,
+            className: 'custom-tooltip shadow-lg border border-slate-700/80 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl'
+        });
+
+        layer.on({
+            mouseover: (e) => {
+                const l = e.target;
+                
+                // Recalculate center point on hover so placement is pinned precisely
+                if (l.getBounds) {
+                    const center = l.getBounds().getCenter();
+                    l.openTooltip(center);
+                }
+
+                if (!activeSelectedCity) {
+                    l.setStyle(highlightStyle());
+                    l.bringToFront();
+                    updateSidebarDetails(matchedCity, cityName);
+                }
+            },
+            mouseout: (e) => {
+                const l = e.target;
+                if (l !== activeLayer) {
+                    geojsonLayer.resetStyle(l);
+                }
+                if (!activeSelectedCity) {
+                    const sidebar = document.getElementById('sidebarContent');
+                    if (sidebar) {
+                        sidebar.innerHTML = `<div class="text-slate-400 text-sm">اختر محافظة من الخريطة لعرض التفاصيل</div>`;
+                    }
+                }
+            },
+            click: (e) => {
+                e.originalEvent._stopped = true;
+                selectCityOnMap(matchedCity, layer, false);
+            }
+        });
+    }
+
+    /* Core Selection Handler */
+    function selectCityOnMap(city, layer, scrollUpToMap = false) {
+        if (!city || !layer) return;
+
+        if (activeLayer && activeLayer !== layer) {
+            geojsonLayer.resetStyle(activeLayer);
+        }
+
+        activeSelectedCity = city;
+        activeLayer = layer;
+
+        activeLayer.setStyle(highlightStyle());
+        activeLayer.bringToFront();
+
+        map.fitBounds(activeLayer.getBounds(), { padding: [25, 25] });
+
+        updateSidebarDetails(city, city.name);
+        highlightCardBorderOnly(city.id);
+
+        if (scrollUpToMap) {
+            document.getElementById('map')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function highlightCardBorderOnly(cityId) {
+        document.querySelectorAll('.city-card').forEach(card => {
+            card.classList.remove('ring-2', 'ring-emerald-500', 'border-emerald-500');
+        });
+
+        const targetCard = document.getElementById(`city-card-${cityId}`);
+        if (targetCard) {
+            targetCard.classList.add('ring-2', 'ring-emerald-500', 'border-emerald-500');
+        }
+    }
+
+    function findMatchedCity(properties) {
+        if (!properties) return null;
+
+        const shapeISO = (properties.shapeISO || properties.ISO_1 || '').toUpperCase().trim();
+
+        if (shapeISO) {
+            const match = citiesList.find(c => c.iso_code === shapeISO);
+            if (match) return match;
+        }
+
+        const shapeName = (properties.shapeName || properties.name || '').toLowerCase().trim();
+        return citiesList.find(c => {
+            const key = (c.key || '').toLowerCase();
+            const name = (c.name || '').toLowerCase();
+            return shapeName.includes(key) || shapeName.includes(name);
+        });
+    }
+
+    function getDistrictName(d) {
+        if (typeof d === 'string') return d;
+        if (!d) return '';
+        return d.name || d.ar_name || d.name_ar || '';
+    }
+
+    function updateSidebarDetails(city, fallbackName) {
+        const sidebar = document.getElementById('sidebarContent');
+        if (!sidebar) return;
+
+        if (!city) {
+            sidebar.innerHTML = `
+                <h3 class="text-lg font-bold text-white mb-1">${fallbackName}</h3>
+                <p class="text-xs text-slate-400">لا تتوفر تفاصيل إضافية لهذه المنطقة</p>
+            `;
+            return;
+        }
+
+        const districtState = districtsMap.get(Number(city.id)) || { data: [] };
+        const districts = districtState.data;
+
+        sidebar.innerHTML = `
+          <div class="mb-3">
+            <h3 class="text-xl font-bold text-emerald-400 mb-1">${city.name}</h3>
+            <span class="text-xs text-slate-500 font-mono uppercase">${city.key} • ISO: ${city.iso_code || 'N/A'}</span>
+          </div>
+
+          <div class="mt-4">
+            <div class="text-xs font-semibold text-slate-300 mb-2">الأقضية والنواحي (${districts.length}):</div>
+            <div class="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto pr-1">
+              ${districts.length > 0 
+                ? districts.map(d => `<span class="text-xs bg-slate-800 text-slate-200 border border-slate-700/80 px-2.5 py-1 rounded-lg">${getDistrictName(d)}</span>`).join('')
+                : '<span class="text-xs text-slate-500">لا توجد بيانات متاحة</span>'
+              }
+            </div>
+          </div>
+        `;
+    }
+
+    async function fetchAllDistrictsConcurrently(cities) {
+        const fetchPromises = cities.map(async (city) => {
+            const cityId = Number(city.id);
+            const url = `${DATA_BASE_URL}/${city.id}-${city.key}.json`;
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+
+                const districtList = Array.isArray(data) ? data : (data.districts || data.data || []);
+                districtsMap.set(cityId, { status: 'success', data: districtList });
+            } catch (e) {
+                districtsMap.set(cityId, { status: 'error', data: [] });
+            }
+        });
+        await Promise.all(fetchPromises);
+    }
+
+    function renderCities(items) {
+        const grid = document.getElementById('citiesGrid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        if (items.length === 0) {
+            grid.innerHTML = `
+                <div class="col-span-full text-center py-12 bg-slate-900/40 border border-slate-800/80 rounded-2xl">
+                  <p class="text-slate-400 font-medium">لا توجد نتائج مطابقة للبحث</p>
+                </div>
+            `;
+            return;
+        }
+
+        items.forEach(city => {
+            const districtState = districtsMap.get(Number(city.id)) || { data: [] };
+            const districts = districtState.data;
+
+            const card = document.createElement('div');
+            card.id = `city-card-${city.id}`;
+            card.className = 'city-card bg-slate-900/70 border border-slate-800/80 hover:border-slate-700/80 rounded-2xl p-5 transition-all duration-300 backdrop-blur-sm flex flex-col justify-between';
+
+            card.innerHTML = `
+                <div>
+                  <div class="flex items-start justify-between gap-2 mb-3">
+                    <div>
+                      <h2 class="text-xl font-bold text-white">${city.name}</h2>
+                      <span class="text-xs text-slate-500 font-mono capitalize">${city.key} • ${city.iso_code || ''}</span>
+                    </div>
+                    <span class="text-xs font-mono bg-emerald-950/60 text-emerald-400 border border-emerald-800/40 px-2 py-0.5 rounded-md">
+                      ${districts.length} أقضية
+                    </span>
+                  </div>
+
+                  <div class="mt-4 pt-3 border-t border-slate-800/80">
+                    <div class="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1">
+                      ${districts.length > 0 
+                        ? districts.map(d => `<span class="text-xs bg-slate-800/90 text-slate-300 border border-slate-700/60 px-2 py-0.5 rounded-md">${getDistrictName(d)}</span>`).join('')
+                        : '<span class="text-xs text-slate-500">لا توجد أقضية</span>'
+                      }
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-5 pt-3 border-t border-slate-800/50 flex justify-end">
+                  <button 
+                    onclick="handleCardShowOnMap(${city.id})"
+                    class="text-xs font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/50 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+                    <span>عرض على الخريطة</span>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                  </button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function renderDocumentation() {
+        const fileList = document.getElementById('fileList');
+        if (!fileList) return;
+
+        fileList.innerHTML = citiesList.map(city => {
+            const districtState = districtsMap.get(Number(city.id)) || { data: [] };
+            return `
+                <a href="./data/${city.id}-${city.key}.json" target="_blank" rel="noopener" class="flex items-center justify-between gap-3 bg-slate-900/60 border border-slate-800 hover:border-emerald-700/70 rounded-xl px-3 py-2.5 transition">
+                    <span class="text-xs text-sky-300 font-mono-num">${city.id}-${city.key}.json</span>
+                    <span class="text-[11px] text-slate-500">${districtState.data.length} سجل</span>
+                </a>
+            `;
+        }).join('');
+
+        const districtCount = citiesList.reduce((total, city) => {
+            const districtState = districtsMap.get(Number(city.id));
+            return total + (districtState ? districtState.data.length : 0);
+        }, 0);
+        document.querySelector('[data-stat="cities"]')?.replaceChildren(document.createTextNode(citiesList.length.toLocaleString('en-US')));
+        document.querySelector('[data-stat="districts"]')?.replaceChildren(document.createTextNode(districtCount.toLocaleString('en-US')));
+    }
+
+    window.handleCardShowOnMap = function(cityId) {
+        const city = citiesList.find(c => Number(c.id) === Number(cityId));
+        const layer = cityLayerMap.get(Number(cityId));
+
+        if (city && layer) {
+            selectCityOnMap(city, layer, true);
+        }
+    };
+
+    document.getElementById('searchInput')?.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        if (!query) {
+            renderCities(citiesList);
+            return;
+        }
+        const filtered = citiesList.filter(city => {
+            const name = (city.name || '').toLowerCase();
+            const key = (city.key || '').toLowerCase();
+
+            const districtState = districtsMap.get(Number(city.id));
+            const matchesDistrict = districtState && districtState.data.some(d => {
+                const dName = getDistrictName(d).toLowerCase();
+                return dName.includes(query);
+            });
+
+            return name.includes(query) || key.includes(query) || matchesDistrict;
+        });
+        renderCities(filtered);
+    });
+
+    initTheme();
+    init();
+</script>
+<script>
+    </script>
+<script src="./shared.js"></script>
+</body>
+
+</html>
