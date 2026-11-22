@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#08131f"><title>WORLD DOMINION</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark">WD</div><div><div class="brand-name">WORLD DOMINION</div><div class="brand-sub">محاكاة السيطرة العالمية</div></div></div>
+    <div class="top-status"><span class="live-dot"></span><span>نسخة تجريبية قابلة للعب</span></div>
+    <button class="icon-btn" id="helpBtn" aria-label="معلومات">ⓘ</button>
+  </header>
+  <main class="main-layout">
+    <section class="map-stage" aria-label="الخريطة الاستراتيجية">
+      <div class="map-toolbar">
+        <div class="map-title"><span class="eyebrow">الخريطة الاستراتيجية</span><strong id="mapMode">العراق — التقسيمات الإدارية</strong></div>
+        <div class="map-actions"><button class="mode-btn active" id="iraqBtn">العراق</button><button class="mode-btn" id="worldBtn">العالم</button><button class="mode-btn" id="resetBtn" title="إعادة العرض">⌖</button></div>
+      </div>
+      <canvas id="mapCanvas"></canvas>
+      <div class="map-legend"><span><i class="legend-country"></i> حدود دولية</span><span><i class="legend-admin"></i> حدود إدارية</span><span><i class="legend-city"></i> مدينة رئيسية</span></div>
+      <div class="zoom-controls"><button id="zoomIn" aria-label="تكبير">＋</button><button id="zoomOut" aria-label="تصغير">−</button></div>
+      <div class="map-coords" id="mapCoords">WORLD DOMINION / MAP ENGINE</div>
+    </section>
+    <aside class="side-panel">
+      <div class="panel-head"><div><span class="eyebrow">مركز القيادة</span><h1>لوحة المعلومات</h1></div><span class="panel-chip">ALPHA 0.1</span></div>
+      <div class="selected-card" id="selectedCard">
+        <div class="selected-kicker">التحديد الحالي</div><div class="selected-name" id="selectedName">العراق</div><div class="selected-meta" id="selectedMeta">اختر محافظة أو مدينة من الخريطة</div>
+        <div class="selected-divider"></div><div class="stats-row"><div><b id="statType">18</b><small id="statTypeLabel">محافظة عراقية</small></div><div><b id="statCities">7</b><small>مدن رئيسية</small></div></div>
+      </div>
+      <div class="section-heading"><span>المدن الرئيسية</span><span class="muted">IRAQ / 07</span></div>
+      <div class="city-list" id="cityList"></div>
+      <div class="selection-details" id="detailsBox"><div class="detail-icon">⌖</div><div><strong>اختر موقعاً</strong><p>اضغط على أي محافظة أو مدينة لعرض معلوماتها.</p></div></div>
+      <div class="panel-footer"><span class="footer-dot"></span> بيانات الحدود الإدارية: geoBoundaries · ADM1</div>
+    </aside>
+  </main>
+  <footer class="bottom-bar"><span>WORLD DOMINION</span><span>الخريطة محلية — لا تحتاج إلى تحميل خرائط خارجية أثناء اللعب</span><span>BUILD 0.1.0</span></footer>
+</div>
+<div class="modal hidden" id="helpModal"><div class="modal-card"><button class="modal-close" id="closeHelp">×</button><span class="eyebrow">حول النسخة</span><h2>WORLD DOMINION</h2><p>هذه هي النواة الأولى للعبة: خريطة عالمية تفاعلية بحدود إدارية حقيقية، مع تركيز أولي على العراق ومدنه السبع.</p><ul><li>اضغط على محافظة لعرضها.</li><li>اضغط على مجسم مدينة لعرض بطاقة المدينة.</li><li>اسحب الخريطة للتحريك، واستخدم أزرار + و− للتقريب.</li><li>زر «العالم» يعرض الخريطة العالمية، وزر «العراق» يعيدك إلى العراق.</li></ul><p class="muted small">البيانات الجغرافية: geoBoundaries, CGAZ ADM1. Attribution required; see DATA-SOURCE.txt.</p></div></div>
+<script src="app.js"></script>
+</body></html>
