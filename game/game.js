@@ -29,7 +29,7 @@ function addSoldier(parent,x,y,index){
  // وحدة مشاة بصورة مجسمة شبه حقيقية، مع ظل خفيف يثبتها بصرياً على أرض المدينة.
  const g=el('g',{class:'map-soldier',transform:`translate(${x} ${y}) scale(${index===0?1:.94})`},parent);
  el('ellipse',{cx:0,cy:1.5,rx:5.1,ry:2.0,fill:'#071019',opacity:.48},g);
- el('image',{href:'./game/assets/research/soldier-infantry.png',x:-9,y:-27,width:18,height:29,preserveAspectRatio:'xMidYMax meet',class:'soldier-sprite'},g);
+ el('image',{href:'./game/assets/soldier-infantry.png','xlink:href':'./game/assets/soldier-infantry.png',x:-13,y:-43,width:26,height:43,preserveAspectRatio:'xMidYMax meet',class:'soldier-sprite'},g);
 }
 function addAirport(parent){
  const a=el('g',{class:'capital-airport',transform:'translate(29 -20)'},parent);
@@ -98,11 +98,11 @@ $('#iraqChoice').onclick=()=>{countryScreen.classList.add('hidden');gameScreen.c
 
 // واجهة إدارة الدولة والتحكم بالخريطة
 const mapSvg=$('#iraqMap'),mapViewport=$('#mapViewport');
-let mapView={x:0,y:0,w:900,h:855},zoomLevel=1;
+let mapView={x:0,y:0,w:900,h:940},zoomLevel=1;
 const activePointers=new Map();let mapGesture=null;
 function applyMapView(){mapSvg.setAttribute('viewBox',`${mapView.x} ${mapView.y} ${mapView.w} ${mapView.h}`)}
-function zoomMap(factor,cx=mapView.x+mapView.w/2,cy=mapView.y+mapView.h/2){const nw=Math.max(260,Math.min(1400,mapView.w/factor)),nh=nw*855/900;const rx=(cx-mapView.x)/mapView.w,ry=(cy-mapView.y)/mapView.h;mapView.x=cx-rx*nw;mapView.y=cy-ry*nh;mapView.w=nw;mapView.h=nh;zoomLevel=900/nw;applyMapView()}
-function resetMap(){mapView={x:0,y:0,w:900,h:855};zoomLevel=1;applyMapView()}
+function zoomMap(factor,cx=mapView.x+mapView.w/2,cy=mapView.y+mapView.h/2){const nw=Math.max(260,Math.min(1400,mapView.w/factor)),nh=nw*940/900;const rx=(cx-mapView.x)/mapView.w,ry=(cy-mapView.y)/mapView.h;mapView.x=cx-rx*nw;mapView.y=cy-ry*nh;mapView.w=nw;mapView.h=nh;zoomLevel=900/nw;applyMapView()}
+function resetMap(){mapView={x:0,y:0,w:900,h:940};zoomLevel=1;applyMapView()}
 $('#zoomIn').onclick=()=>zoomMap(1.25);$('#zoomOut').onclick=()=>zoomMap(.8);$('#zoomReset').onclick=resetMap;
 mapViewport.addEventListener('wheel',e=>{e.preventDefault();const r=mapSvg.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*mapView.w+mapView.x,y=(e.clientY-r.top)/r.height*mapView.h+mapView.y;zoomMap(e.deltaY<0?1.15:.87,x,y)},{passive:false});
 function pointerDistance(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
@@ -118,7 +118,7 @@ mapViewport.addEventListener('pointermove',e=>{
  const r=mapSvg.getBoundingClientRect(),pts=[...activePointers.values()];
  if(pts.length>=2&&mapGesture.type==='pinch'){
   const a=pts[0],b=pts[1],center={x:(a.x+b.x)/2,y:(a.y+b.y)/2},distance=Math.max(1,pointerDistance(a,b)),base=mapGesture.view;
-  const nw=Math.max(260,Math.min(1400,base.w*mapGesture.startDistance/distance)),nh=nw*855/900;
+  const nw=Math.max(260,Math.min(1400,base.w*mapGesture.startDistance/distance)),nh=nw*940/900;
   mapView.w=nw;mapView.h=nh;mapView.x=mapGesture.worldX-(center.x-r.left)/r.width*nw;mapView.y=mapGesture.worldY-(center.y-r.top)/r.height*nh;zoomLevel=900/nw;applyMapView();mapViewport.classList.add('dragging');
  }else if(pts.length===1&&mapGesture.type==='pan'){
   const a=pts[0],dx=(a.x-mapGesture.start.x)/r.width*mapGesture.view.w,dy=(a.y-mapGesture.start.y)/r.height*mapGesture.view.h;
@@ -128,6 +128,26 @@ mapViewport.addEventListener('pointermove',e=>{
 });
 function endMapPointer(e){activePointers.delete(e.pointerId);beginMapGesture()}
 mapViewport.addEventListener('pointerup',endMapPointer);mapViewport.addEventListener('pointercancel',endMapPointer);mapViewport.addEventListener('lostpointercapture',endMapPointer);
+// دعم سحب وتكبير الخريطة على Safari في iPhone باستخدام أحداث اللمس مباشرة.
+let touchStartState=null;
+mapViewport.addEventListener('touchstart',e=>{
+ if(e.target.closest('.zoom-tools'))return;
+ if(e.touches.length===1){const t=e.touches[0];touchStartState={mode:'pan',x:t.clientX,y:t.clientY,view:{...mapView}};}
+ else if(e.touches.length===2){const a=e.touches[0],b=e.touches[1],r=mapSvg.getBoundingClientRect();touchStartState={mode:'pinch',distance:Math.max(1,Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)),view:{...mapView},worldX:mapView.x+(((a.clientX+b.clientX)/2-r.left)/r.width)*mapView.w,worldY:mapView.y+(((a.clientY+b.clientY)/2-r.top)/r.height)*mapView.h};}
+},{passive:false});
+mapViewport.addEventListener('touchmove',e=>{
+ if(!touchStartState||e.target.closest('.zoom-tools'))return;e.preventDefault();const r=mapSvg.getBoundingClientRect();
+ if(e.touches.length===1&&touchStartState.mode==='pan'){
+  const t=e.touches[0],st=touchStartState,dx=(t.clientX-st.x)/r.width*st.view.w,dy=(t.clientY-st.y)/r.height*st.view.h;
+  mapView.x=st.view.x-dx;mapView.y=st.view.y-dy;applyMapView();mapViewport.classList.add('dragging');
+ }else if(e.touches.length===2){
+  const a=e.touches[0],b=e.touches[1],st=touchStartState,centerX=(a.clientX+b.clientX)/2,centerY=(a.clientY+b.clientY)/2,distance=Math.max(1,Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY));
+  const nw=Math.max(260,Math.min(1400,st.view.w*st.distance/distance)),nh=nw*940/900;
+  mapView.w=nw;mapView.h=nh;mapView.x=st.worldX-(centerX-r.left)/r.width*nw;mapView.y=st.worldY-(centerY-r.top)/r.height*nh;applyMapView();mapViewport.classList.add('dragging');
+ }
+},{passive:false});
+mapViewport.addEventListener('touchend',e=>{if(e.touches.length===0){touchStartState=null;mapViewport.classList.remove('dragging')}else if(e.touches.length===1){const t=e.touches[0];touchStartState={mode:'pan',x:t.clientX,y:t.clientY,view:{...mapView}}}},{passive:true});
+mapViewport.addEventListener('touchcancel',()=>{touchStartState=null;mapViewport.classList.remove('dragging')},{passive:true});
 // منع سحب الخريطة من تعطيل اختيار عناصرها عند النقر دون تحريك
 const oldProvinceHandlerNote='';
 

@@ -115,3 +115,10 @@
  .research-unit-row span{font-size:12px}
  .unit-detail-photo{width:40%;flex-basis:40%}
 }
+
+/* iOS Safari map interaction and clear soldier sprite rendering */
+.map-wrap{touch-action:none!important;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.map-wrap svg{touch-action:none!important}
+.map-soldier .soldier-sprite{display:block;overflow:visible;pointer-events:none}
+.kuwait-province{fill:#92765a!important;stroke:#f0c98c!important;stroke-width:1.8!important}
+.kuwait-label{font-size:11px;fill:#fff0cf}
