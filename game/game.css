@@ -79,6 +79,9 @@
 .city-marker.capital .building{fill:#e5d2a8;stroke:#70512f}
 .city-marker .city-name{font-size:12px;fill:#fff4d7;paint-order:stroke;stroke:#17232b;stroke-width:3.4px;text-anchor:middle;font-weight:800}
 .map-soldier{filter:drop-shadow(0 1px 1px #0009)}
+.capital-airport{filter:drop-shadow(0 1px 2px #0009)}
+.asset-label{font-size:5px;fill:#f8e8c2;text-anchor:middle;paint-order:stroke;stroke:#17232b;stroke-width:1.6px;font-weight:700}
+.air-superiority-fighter{filter:drop-shadow(0 1px 2px #0009)}
 .city-marker.selected .city-ground{stroke:#fff3b5;stroke-width:2.8}
 /* وحدات المشاة: صورة مجسمة مفصلة بدلاً من الرسم الرمزي المبسط. */
 .map-soldier{filter:drop-shadow(0 1px 1.4px #000b);pointer-events:none}
@@ -126,23 +129,14 @@
 .kuwait-label{font-size:10px!important;fill:#fff1cb!important}
 .map-soldier{pointer-events:none;filter:drop-shadow(0 1px 2px #000d)}
 .map-soldier .soldier-sprite{display:block;overflow:visible;pointer-events:none}
+/* Kuwait governorate polygons */
+.kuwait-province{fill:#526b76!important;stroke:#d6bd8c!important;stroke-width:1.5!important;vector-effect:non-scaling-stroke;cursor:pointer}
+.kuwait-province:nth-of-type(even){fill:#607b82!important}
+.kuwait-province:hover,.kuwait-province.selected{fill:#788d78!important;filter:brightness(1.2)}
+.kuwait-label{pointer-events:none;font-size:10px!important}
 
-/* Kuwait: six selectable governorate polygons and a clear national outline. */
-.kuwait-province{fill:#786b56;fill-opacity:.88;stroke:#d9c18d;stroke-width:1.5;vector-effect:non-scaling-stroke;cursor:pointer}
-.kuwait-province:nth-of-type(even){fill:#8b795e}
-.kuwait-province.selected{fill:#b18b50;fill-opacity:.98;stroke:#fff0b6;stroke-width:2.8}
-.kuwait-country-outline{fill:none;stroke:#e5c78d;stroke-width:2.4;vector-effect:non-scaling-stroke}
-.kuwait-label{font-size:9px!important;fill:#fff1ce!important;paint-order:stroke;stroke:#1b2932;stroke-width:2.6px;text-anchor:middle;font-weight:800;pointer-events:none}
-.map-soldier{cursor:pointer;pointer-events:all;transform-box:fill-box;transform-origin:center bottom}
-.map-soldier .soldier-shadow{fill:#071019;opacity:.62}
-.map-soldier .soldier-sprite{display:block;overflow:visible;image-rendering:auto;pointer-events:none}
-.map-soldier.selected{filter:drop-shadow(0 0 3px #ffe18a) drop-shadow(0 1px 2px #000d)}
-.map-soldier.selected .soldier-shadow{fill:#ffe08b;opacity:.95;stroke:#fff1b8;stroke-width:1.4}
-
-/* Explicit selected state and reliable contrast for the six Kuwait regions. */
-.kuwait-province{fill:#786b56!important;fill-opacity:.88;stroke:#d9c18d!important;stroke-width:1.5;vector-effect:non-scaling-stroke;cursor:pointer}
-.kuwait-province:nth-of-type(even){fill:#8b795e!important}
-.kuwait-province.selected{fill:#b18b50!important;fill-opacity:1;stroke:#fff0b6!important;stroke-width:2.8}
-.kuwait-country-outline{fill:none;stroke:#e5c78d;stroke-width:2.4;vector-effect:non-scaling-stroke}
-.map-soldier.selected{filter:drop-shadow(0 0 3px #ffe18a) drop-shadow(0 1px 2px #000d)}
-.map-soldier.selected .soldier-shadow{fill:#ffe08b;opacity:.95;stroke:#fff1b8;stroke-width:1.4}
+/* Kuwait governorate polygons */
+.kuwait-province{fill:#526b76!important;stroke:#d6bd8c!important;stroke-width:1.5!important;vector-effect:non-scaling-stroke;cursor:pointer}
+.kuwait-province:nth-of-type(even){fill:#607b82!important}
+.kuwait-province:hover,.kuwait-province.selected{fill:#788d78!important;filter:brightness(1.2)}
+.kuwait-label{pointer-events:none;font-size:10px!important}

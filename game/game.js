@@ -26,20 +26,12 @@ function addBuilding3D(parent,x,y,w,h,kind='civil'){
  for(let wy=y+5;wy<y+h-2;wy+=6)for(let wx=x+3;wx<x+w*.65;wx+=6)el('rect',{x:wx,y:wy,width:2.2,height:2.6,fill:'#f3d99a',opacity:.9},parent);
 }
 function addSoldier(parent,x,y,index){
- // ملف الجندي موجود داخل assets/research؛ المسار القديم كان يشير إلى ملف غير موجود
- // ولذلك كان Safari يعرض صورة مكسورة/علامة استفهام بدلاً من المجسم.
- const g=el('g',{class:'map-soldier',transform:`translate(${x} ${y}) scale(${index===0?1:.94})`,'data-unit':`infantry-${index+1}`,'aria-label':'وحدة مشاة'},parent);
- el('ellipse',{class:'soldier-shadow',cx:0,cy:1.5,rx:7,ry:2.5},g);
- const img=el('image',{x:-10,y:-55,width:20,height:55,preserveAspectRatio:'xMidYMax meet',class:'soldier-sprite',draggable:'false'},g);
- const soldierAsset='./game/assets/research/soldier-infantry-cutout.png';
- img.setAttribute('href',soldierAsset);
- img.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href',soldierAsset);
- img.addEventListener('error',()=>{
-   // احتياط محلي ثانٍ، ولا نعرض أبداً رمزاً نصياً بديلاً عن المجسم.
-   const fallback='./game/assets/research/soldier-infantry.png';
-   if(img.getAttribute('href')!==fallback){img.setAttribute('href',fallback);img.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href',fallback)}
- });
- g.addEventListener('click',e=>{e.stopPropagation();document.querySelectorAll('.map-soldier.selected').forEach(u=>u.classList.remove('selected'));g.classList.add('selected')});
+ // جندي مشاة مقصوص بخلفية شفافة، يظهر بوضوح فوق المدينة.
+ const g=el('g',{class:'map-soldier',transform:`translate(${x} ${y}) scale(${index===0?1:.96})`},parent);
+ el('ellipse',{cx:0,cy:1.5,rx:6,ry:2.2,fill:'#071019',opacity:.5},g);
+ const img=el('image',{x:-9,y:-48,width:18,height:48,preserveAspectRatio:'xMidYMax meet',class:'soldier-sprite'},g);
+ img.setAttribute('href','./game/assets/soldier-infantry-cutout.png');
+ img.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href','./game/assets/soldier-infantry-cutout.png');
 }
 function addCity(c){
  let [x,y]=project([c.lon,c.lat]);
@@ -65,28 +57,36 @@ geo.features.forEach(f=>{let path=el('path',{d:geometryPaths(f.geometry),class:'
 // province labels at geographic centroids derived from the boundary coordinates
 geo.features.forEach(f=>{let pts=[];let polys=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;polys.forEach(poly=>poly[0].forEach(p=>pts.push(p)));let lon=pts.reduce((s,p)=>s+p[0],0)/pts.length,lat=pts.reduce((s,p)=>s+p[1],0)/pts.length;let [x,y]=project([lon,lat]);let t=el('text',{x,y,class:'province-label'});t.textContent=f.properties.name_ar||names[f.properties.shapeISO]});
 
-// محافظات الكويت الست. رُسمت كل محافظة كمضلع جغرافي مستقل قابل للتحديد،
-// بدلاً من خطوط تقسيم عشوائية فوق شكل واحد.
-const kuwaitGovernorates=[
- {id:'KW-JA',name:'الجهراء',label:[47.12,29.76],points:[[46.55,30.08],[46.72,30.10],[46.90,30.02],[47.08,29.96],[47.22,29.88],[47.38,29.82],[47.55,29.78],[47.70,29.72],[47.84,29.70],[47.96,29.66],[48.05,29.58],[47.94,29.53],[47.79,29.52],[47.70,29.50],[47.55,29.45],[47.42,29.35],[47.25,29.30],[47.00,29.35],[46.82,29.52],[46.68,29.70],[46.55,30.08]]},
- {id:'KW-KU',name:'العاصمة',label:[47.91,29.55],points:[[47.79,29.52],[47.91,29.57],[48.00,29.55],[48.05,29.58],[48.12,29.48],[48.08,29.43],[47.98,29.43],[47.86,29.45],[47.79,29.52]]},
- {id:'KW-FA',name:'الفروانية',label:[47.68,29.42],points:[[47.42,29.35],[47.55,29.45],[47.70,29.50],[47.79,29.52],[47.86,29.45],[47.88,29.34],[47.72,29.32],[47.58,29.34],[47.42,29.35]]},
- {id:'KW-HA',name:'حولي',label:[47.99,29.39],points:[[47.86,29.45],[47.98,29.43],[48.08,29.43],[48.15,29.34],[48.10,29.20],[48.00,29.31],[47.88,29.34],[47.86,29.45]]},
- {id:'KW-MU',name:'مبارك الكبير',label:[47.83,29.22],points:[[47.72,29.32],[47.88,29.34],[48.00,29.31],[48.10,29.20],[48.02,28.86],[47.90,28.92],[47.75,29.02],[47.60,29.18],[47.58,29.34],[47.72,29.32]]},
- {id:'KW-AH',name:'الأحمدي',label:[47.56,28.88],points:[[47.00,29.35],[47.25,29.30],[47.42,29.35],[47.58,29.34],[47.60,29.18],[47.75,29.02],[47.90,28.92],[48.02,28.86],[47.90,28.68],[47.72,28.55],[47.48,28.55],[47.26,28.62],[47.12,28.78],[46.98,28.94],[46.82,29.12],[46.82,29.52],[47.00,29.35]]}
-];
-function polygonPath(points){return points.map((pt,i)=>{const [x,y]=project(pt);return `${i?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`}).join(' ')+' Z'}
-kuwaitGovernorates.forEach(gov=>{
- const path=el('path',{d:polygonPath(gov.points),class:'province kuwait-province','data-iso':gov.id,'data-governorate':gov.name});
- path.addEventListener('click',()=>selectProvince({properties:{shapeISO:gov.id,name_ar:gov.name}},path));
- const [x,y]=project(gov.label);const label=el('text',{x,y,class:'province-label kuwait-label','pointer-events':'none'});label.textContent=gov.name;
-});
-// حد الكويت الخارجي مرسوم بخط واضح فوق حدود المحافظات.
+// الكويت: حدود جغرافية تقريبية متصلة وتقسيم قابل للتحديد للمحافظات الست.
 const kwOutline=[[46.55,30.08],[46.72,30.10],[46.90,30.02],[47.08,29.96],[47.22,29.88],[47.38,29.82],[47.55,29.78],[47.70,29.72],[47.84,29.70],[47.96,29.66],[48.05,29.58],[48.12,29.48],[48.15,29.34],[48.16,29.18],[48.10,29.02],[48.02,28.86],[47.90,28.68],[47.72,28.55],[47.48,28.55],[47.26,28.62],[47.12,28.78],[46.98,28.94],[46.82,29.12],[46.68,29.30],[46.58,29.52],[46.54,29.76],[46.55,30.08]];
-el('path',{d:polygonPath(kwOutline),class:'kuwait-country-outline','pointer-events':'none'});
-const kuwaitCity={id:'kuwait-city',name:'مدينة الكويت',province:'العاصمة',lon:47.978,lat:29.375,capital:true};
-citiesData.push(kuwaitCity);
-
+const kwPath=kwOutline.map((pt,i)=>{const [x,y]=project(pt);return `${i?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`}).join(' ')+' Z';
+const kwShape=el('path',{d:kwPath,class:'province kuwait-outline','data-iso':'KW'});
+kwShape.addEventListener('click',()=>selectProvince({properties:{shapeISO:'KW'}},kwShape));
+// تقسيمات تقريبية مرسومة كمضلعات مستقلة (ليست خطوطاً زخرفية فقط)، كل واحدة قابلة للضغط.
+const kwGovernorates=[
+ {name:'الجهراء',poly:[[46.55,30.08],[46.72,30.10],[46.90,30.02],[47.08,29.96],[47.22,29.88],[47.38,29.82],[47.55,29.78],[47.70,29.72],[47.30,29.55],[47.05,29.55],[46.82,29.65],[46.58,29.76]],label:[46.95,29.88]},
+ {name:'العاصمة',poly:[[47.55,29.78],[47.70,29.72],[47.84,29.70],[47.96,29.66],[48.05,29.58],[48.12,29.48],[47.95,29.48],[47.82,29.53],[47.65,29.58]],label:[47.91,29.53]},
+ {name:'حولي',poly:[[47.82,29.53],[47.95,29.48],[48.12,29.48],[48.15,29.34],[47.98,29.34],[47.82,29.39]],label:[47.98,29.39]},
+ {name:'الفروانية',poly:[[47.30,29.55],[47.65,29.58],[47.82,29.53],[47.82,29.39],[47.60,29.36],[47.42,29.40]],label:[47.52,29.48]},
+ {name:'مبارك الكبير',poly:[[47.60,29.36],[47.82,29.39],[47.98,29.34],[48.10,29.02],[47.90,28.92],[47.70,29.05]],label:[47.77,29.23]},
+ {name:'الأحمدي',poly:[[47.42,29.40],[47.60,29.36],[47.70,29.05],[47.90,28.92],[47.72,28.55],[47.48,28.55],[47.26,28.62],[47.12,28.78],[46.98,28.94],[46.82,29.12],[46.68,29.30]],label:[47.56,28.88]}
+];
+kwGovernorates.forEach((gov,i)=>{
+ const d=gov.poly.map((pt,j)=>{const [x,y]=project(pt);return `${j?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`}).join(' ')+' Z';
+ const path=el('path',{d,class:'province kuwait-province','data-governorate':gov.name});
+ path.addEventListener('click',e=>{e.stopPropagation();selectProvince({properties:{shapeISO:'KW-'+i}},path)});
+ const [x,y]=project(gov.label);const t=el('text',{x,y,class:'province-label kuwait-label'});t.textContent=gov.name;
+});
+const kuwaitCities=[
+ {id:'kuwait-city',name:'مدينة الكويت',province:'العاصمة',lon:47.978,lat:29.375,capital:true,buildings:5},
+ {id:'jahra-city',name:'الجهراء',province:'الجهراء',lon:47.658,lat:29.337,buildings:3},
+ {id:'ahmadi-city',name:'الأحمدي',province:'الأحمدي',lon:48.05,lat:29.076,buildings:3},
+ {id:'hawalli-city',name:'حولي',province:'حولي',lon:48.028,lat:29.333,buildings:3},
+ {id:'farwaniya-city',name:'الفروانية',province:'الفروانية',lon:47.967,lat:29.277,buildings:3},
+ {id:'mubarak-city',name:'مبارك الكبير',province:'مبارك الكبير',lon:48.06,lat:29.19,buildings:2},
+ {id:'salmiya-city',name:'السالمية',province:'حولي',lon:48.10,lat:29.337,buildings:3}
+];
+citiesData.push(...kuwaitCities);
 citiesData.forEach(addCity);
 const buttons=$('#cityButtons');buttons.className='city-buttons';citiesData.forEach(c=>{let b=document.createElement('button');b.textContent=(c.capital?'★ ':'')+c.name;b.onclick=()=>selectCity(c);buttons.appendChild(b)});
 }
