@@ -86,3 +86,19 @@
 /* وحدات المشاة: صورة مجسمة مفصلة بدلاً من الرسم الرمزي المبسط. */
 .map-soldier{filter:drop-shadow(0 1px 1.4px #000b);pointer-events:none}
 .map-soldier .soldier-sprite{overflow:visible;image-rendering:auto}
+
+/* مركز البحث العلمي: مجموعات رئيسية ثم فئات فرعية وقائمة وحدات عمودية */
+.research-major-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:9px}
+.research-major{border:1px solid #435c6c;background:#1a2d3a;color:#dce8ee;border-radius:9px;padding:11px 5px;font-size:12px;font-weight:800}
+.research-major.active{border-color:#e0b96f;background:linear-gradient(145deg,#72562c,#3d3324);color:#ffe2a5}
+.research-sub-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:12px}
+.research-sub-tabs .research-tab{text-align:center;padding:10px 5px}
+.unit-card-list{display:grid;grid-template-columns:1fr;gap:8px}
+.unit-card.unit-row{display:grid;grid-template-columns:minmax(0,1fr) 92px;grid-template-rows:auto auto;align-items:center;gap:3px 10px;padding:7px 9px;text-align:right;min-height:78px}
+.unit-row .unit-photo{grid-column:2;grid-row:1 / span 2;width:92px;height:64px;object-fit:cover;border-radius:7px}
+.unit-row .unit-card-name{grid-column:1;grid-row:1;font-size:13px;padding:0}
+.unit-row small{grid-column:1;grid-row:2;padding:0}
+.kuwait-province{fill:#3e5b66;stroke:#a8bec5;stroke-width:2;cursor:pointer}
+.kuwait-province:nth-child(even){fill:#48636b}
+.kuwait-capital .city-ground{fill:#b48a4e;stroke:#ffe2a1;stroke-width:2}
+@media(max-width:520px){.research-major-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.unit-card.unit-row{grid-template-columns:minmax(0,1fr) 86px}.unit-row .unit-photo{width:86px;height:62px}}
