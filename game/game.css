@@ -87,18 +87,31 @@
 .map-soldier{filter:drop-shadow(0 1px 1.4px #000b);pointer-events:none}
 .map-soldier .soldier-sprite{overflow:visible;image-rendering:auto}
 
-/* مركز البحث العلمي: مجموعات رئيسية ثم فئات فرعية وقائمة وحدات عمودية */
-.research-major-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:9px}
-.research-major{border:1px solid #435c6c;background:#1a2d3a;color:#dce8ee;border-radius:9px;padding:11px 5px;font-size:12px;font-weight:800}
-.research-major.active{border-color:#e0b96f;background:linear-gradient(145deg,#72562c,#3d3324);color:#ffe2a5}
-.research-sub-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:12px}
-.research-sub-tabs .research-tab{text-align:center;padding:10px 5px}
-.unit-card-list{display:grid;grid-template-columns:1fr;gap:8px}
-.unit-card.unit-row{display:grid;grid-template-columns:minmax(0,1fr) 92px;grid-template-rows:auto auto;align-items:center;gap:3px 10px;padding:7px 9px;text-align:right;min-height:78px}
-.unit-row .unit-photo{grid-column:2;grid-row:1 / span 2;width:92px;height:64px;object-fit:cover;border-radius:7px}
-.unit-row .unit-card-name{grid-column:1;grid-row:1;font-size:13px;padding:0}
-.unit-row small{grid-column:1;grid-row:2;padding:0}
-.kuwait-province{fill:#3e5b66;stroke:#a8bec5;stroke-width:2;cursor:pointer}
-.kuwait-province:nth-child(even){fill:#48636b}
-.kuwait-capital .city-ground{fill:#b48a4e;stroke:#ffe2a1;stroke-width:2}
-@media(max-width:520px){.research-major-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.unit-card.unit-row{grid-template-columns:minmax(0,1fr) 86px}.unit-row .unit-photo{width:86px;height:62px}}
+
+/* Research hub: branch buttons, category tabs and vertical unit rows */
+.research-hub{display:flex;flex-direction:column;gap:10px}
+.research-branches{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.research-branch{border:1px solid #40596a;border-radius:10px;padding:12px 5px;background:#172a38;color:#dce8ee;font-weight:800;font-size:12px}
+.research-branch.active{background:linear-gradient(140deg,#956d34,#4c3c29);border-color:#e4bd79;color:#fff1cf}
+.research-subtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.research-tab{ text-align:center }
+.research-unit-list{display:flex;flex-direction:column;gap:7px}
+.research-unit-row{direction:rtl;display:flex;align-items:center;gap:12px;width:100%;min-height:76px;padding:7px 10px;background:linear-gradient(100deg,#1c303d,#14232e);border:1px solid #354e5d;border-radius:11px;color:#edf3f5;text-align:right}
+.research-unit-row img{width:78px;height:60px;object-fit:cover;flex:0 0 78px;border-radius:7px;background:#263b47}
+.research-unit-row span{font-size:13px;font-weight:800;flex:1}
+.research-unit-row small{display:block;margin-top:5px;color:#9eb2bd;font-size:10px;font-weight:400}
+.research-unit-row.chosen{border-color:#e4bd79;box-shadow:0 0 0 1px #e4bd7944}
+.unit-detail-head{direction:rtl;align-items:flex-start}
+.unit-detail-photo{width:42%;max-width:190px;aspect-ratio:4/3;object-fit:cover;flex:0 0 42%;border-radius:9px;border:1px solid #506879;background:#14232e}
+.unit-detail-head>div{flex:1;min-width:0}
+.kuwait-province{fill:#786c58;stroke:#e0c18b;stroke-width:1.7}
+.kuwait-province:nth-of-type(even){fill:#88785e}
+.kuwait-label{fill:#fff0c9;font-size:10px}
+.map-soldier .soldier-sprite{filter:drop-shadow(0 1px 1px #000b)}
+@media(max-width:420px){
+ .research-branches{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .research-subtabs{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .research-unit-row img{width:68px;height:55px;flex-basis:68px}
+ .research-unit-row span{font-size:12px}
+ .unit-detail-photo{width:40%;flex-basis:40%}
+}

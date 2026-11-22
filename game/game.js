@@ -29,7 +29,7 @@ function addSoldier(parent,x,y,index){
  // وحدة مشاة بصورة مجسمة شبه حقيقية، مع ظل خفيف يثبتها بصرياً على أرض المدينة.
  const g=el('g',{class:'map-soldier',transform:`translate(${x} ${y}) scale(${index===0?1:.94})`},parent);
  el('ellipse',{cx:0,cy:1.5,rx:5.1,ry:2.0,fill:'#071019',opacity:.48},g);
- el('image',{href:'./game/assets/research/soldier-infantry.png',x:-5.8,y:-17.5,width:11.6,height:19.2,preserveAspectRatio:'xMidYMax meet',class:'soldier-sprite'},g);
+ el('image',{href:'./game/assets/research/soldier-infantry.png',x:-9,y:-27,width:18,height:29,preserveAspectRatio:'xMidYMax meet',class:'soldier-sprite'},g);
 }
 function addAirport(parent){
  const a=el('g',{class:'capital-airport',transform:'translate(29 -20)'},parent);
@@ -69,24 +69,32 @@ const allCoords=[];geo.features.forEach(f=>{let g=f.geometry,polys=g.type==='Pol
 geo.features.forEach(f=>{let path=el('path',{d:geometryPaths(f.geometry),class:'province','data-iso':f.properties.shapeISO});path.addEventListener('click',()=>selectProvince(f,path));});
 // province labels at geographic centroids derived from the boundary coordinates
 geo.features.forEach(f=>{let pts=[];let polys=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;polys.forEach(poly=>poly[0].forEach(p=>pts.push(p)));let lon=pts.reduce((s,p)=>s+p[0],0)/pts.length,lat=pts.reduce((s,p)=>s+p[1],0)/pts.length;let [x,y]=project([lon,lat]);let t=el('text',{x,y,class:'province-label'});t.textContent=f.properties.name_ar||names[f.properties.shapeISO]});
+
+// الكويت جزء جغرافي متصل بالخريطة جنوب العراق، وليست خيار دولة في شاشة البداية.
+// حدود المحافظات الست مبسطة داخل اللعبة ومثبتة على الإحداثيات الجغرافية.
+const kuwaitGovernorates=[
+ {id:'KW-JA',name:'الجهراء',points:[[46.55,30.10],[47.55,30.10],[47.72,29.92],[47.62,29.72],[47.45,29.60],[47.20,29.55],[46.95,29.60],[46.72,29.78],[46.55,30.10]]},
+ {id:'KW-KU',name:'العاصمة',points:[[47.72,29.62],[48.05,29.62],[48.12,29.48],[47.98,29.40],[47.78,29.42],[47.62,29.52],[47.72,29.62]]},
+ {id:'KW-HA',name:'حولي',points:[[47.70,29.42],[48.02,29.40],[48.05,29.30],[47.82,29.28],[47.68,29.34],[47.70,29.42]]},
+ {id:'KW-FA',name:'الفروانية',points:[[47.42,29.55],[47.72,29.62],[47.62,29.52],[47.68,29.34],[47.48,29.30],[47.30,29.40],[47.42,29.55]]},
+ {id:'KW-MU',name:'مبارك الكبير',points:[[47.68,29.34],[47.82,29.28],[48.02,29.30],[48.08,29.18],[47.78,29.16],[47.55,29.22],[47.48,29.30],[47.68,29.34]]},
+ {id:'KW-AH',name:'الأحمدي',points:[[47.30,29.40],[47.48,29.30],[47.55,29.22],[47.78,29.16],[48.08,29.18],[48.15,28.95],[47.95,28.55],[47.35,28.55],[47.20,28.90],[47.30,29.40]]}
+];
+kuwaitGovernorates.forEach((g,index)=>{
+ const d=g.points.map((pt,i)=>{const [x,y]=project(pt);return `${i?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`}).join(' ')+' Z';
+ const path=el('path',{d,class:'province kuwait-province','data-iso':g.id});
+ path.addEventListener('click',()=>selectProvince(g,path));
+ const center=g.points.reduce((a,p)=>[a[0]+p[0]/g.points.length,a[1]+p[1]/g.points.length],[0,0]);
+ const [lx,ly]=project(center);
+ const label=el('text',{x:lx,y:ly,class:'province-label kuwait-label'});label.textContent=g.name;
+});
+const kuwaitCity={id:'kuwait-city',name:'مدينة الكويت',province:'العاصمة',lon:47.978,lat:29.375,capital:true};
+citiesData.push(kuwaitCity);
+
 citiesData.forEach(addCity);
 const buttons=$('#cityButtons');buttons.className='city-buttons';citiesData.forEach(c=>{let b=document.createElement('button');b.textContent=(c.capital?'★ ':'')+c.name;b.onclick=()=>selectCity(c);buttons.appendChild(b)});
 }
 $('#iraqChoice').onclick=()=>{countryScreen.classList.add('hidden');gameScreen.classList.remove('hidden');init().catch(err=>{console.error(err);$('#details').textContent='تعذر تحميل بيانات الخريطة المحلية.'})};
-function initKuwait(){svg.innerHTML='';$('#gameScreen .map-heading h2').textContent='دولة الكويت';$('#gameScreen .legend').innerHTML='<span><i class="province-key"></i> حدود المحافظات</span><span><i class="city-key"></i> مدينة الكويت</span><span><i class="capital-key"></i> العاصمة</span>';
- const regions=[
-  {n:'الجهراء',p:'M205 180 L420 120 L545 170 L520 300 L440 350 L280 330 L180 260 Z',x:355,y:240},
-  {n:'العاصمة',p:'M520 300 L610 285 L660 350 L620 420 L535 410 L490 355 Z',x:570,y:350},
-  {n:'حولي',p:'M535 410 L620 420 L650 475 L590 520 L515 490 L490 445 Z',x:570,y:465},
-  {n:'الفروانية',p:'M440 350 L535 410 L490 445 L515 490 L430 520 L360 455 L365 380 Z',x:440,y:440},
-  {n:'مبارك الكبير',p:'M515 490 L590 520 L620 600 L560 655 L470 620 L430 520 Z',x:530,y:575},
-  {n:'الأحمدي',p:'M430 520 L470 620 L560 655 L535 750 L430 785 L330 700 L340 590 Z',x:430,y:690}
- ];
- regions.forEach((r,i)=>{const path=el('path',{d:r.p,class:'province kuwait-province','data-kw':r.n,fill:['#3b5965','#49616a','#3d5964','#526b6d','#465e66','#3b5965'][i]});path.addEventListener('click',()=>{document.querySelectorAll('.province').forEach(p=>p.classList.remove('selected'));path.classList.add('selected')});const t=el('text',{x:r.x,y:r.y,class:'province-label'});t.textContent=r.n});
- const sea=el('text',{x:700,y:730,class:'province-label'});sea.textContent='الخليج العربي';
- const city=el('g',{class:'city-marker capital kuwait-capital',transform:'translate(585 365)','data-city':'kuwait-city'});el('ellipse',{cx:0,cy:5,rx:35,ry:10,class:'shadow'},city);el('polygon',{points:'-28,0 0,-18 30,0 0,13',class:'city-ground'},city);for(let i=0;i<4;i++){el('rect',{x:-19+i*11,y:-16-(i%2)*5,width:8,height:18,fill:'#cbb990',stroke:'#52616a','stroke-width':1},city)}el('text',{x:0,y:31,class:'city-name'},city).textContent='مدينة الكويت ★';
- $('#cityButtons').innerHTML='';$('#gameScreen .map-heading .eyebrow').textContent='خريطة العمليات';resetMap();}
-$('#kuwaitChoice').onclick=()=>{countryScreen.classList.add('hidden');gameScreen.classList.remove('hidden');initKuwait()};
 
 // واجهة إدارة الدولة والتحكم بالخريطة
 const mapSvg=$('#iraqMap'),mapViewport=$('#mapViewport');
@@ -151,75 +159,104 @@ function statePanel(){
 }
 function diplomacyPanel(){showModal('الدبلوماسية',`<div class="section-block"><h3>الدول المتاحة في الخريطة الحالية</h3><div class="country-list"><div class="country-row"><span>🇮🇶 جمهورية العراق</span><em>دولتك • نشطة</em></div></div></div><div class="section-block"><h3>ميزات دبلوماسية مخطط لها</h3><div class="country-list">${[['🇸🇦 السعودية','السعودية'],['🇮🇷 إيران','إيران'],['🇹🇷 تركيا','تركيا'],['🇰🇼 الكويت','الكويت'],['🇯🇴 الأردن','الأردن'],['🇸🇾 سوريا','سوريا']].map(([flag,n])=>`<div class="country-row"><span>${flag}</span><em>ستضاف عند توسيع خريطة العالم</em></div>`).join('')}</div></div><button class="action-btn" disabled>إنشاء تحالف — قريباً</button><button class="action-btn" disabled>مراسلة دولة — قريباً</button><button class="action-btn" disabled>مراسلة التحالف — قريباً</button><p>حالياً الخريطة تحتوي العراق فقط؛ ستُفعّل العلاقات والتحالفات والمراسلات بعد إضافة الدول الأخرى ونظام الدبلوماسية.</p>`)}
 function tradePanel(){showModal('التجارة الدولية',`<div class="section-block"><h3>مركز التجارة</h3><div class="resource-grid"><div class="info-card"><small>اتفاقيات تجارية</small><b>0</b></div><div class="info-card"><small>شركاء تجاريون</small><b>0</b></div></div></div><h3>عمليات التجارة</h3><button class="action-btn" disabled>تصدير الموارد</button><button class="action-btn" disabled>استيراد الموارد</button><p>لن تتاح عمليات الاستيراد والتصدير إلا بعد إضافة دول أخرى وإقامة تحالف أو توقيع عقد تجارة معها. هذه الأزرار معطلة حالياً حتى لا تنفذ تجارة وهمية.</p>`)}
-const researchGroups={
- land:{label:'الأرضية',tabs:[
-  {id:'infantry',label:'المشاة',items:[
-   {id:'regular',name:'مشاة عاديون',desc:'قوات المشاة الأساسية لحماية المدن والسيطرة على الأراضي.',cost:5000,duration:90,image:'infantry.webp'},
-   {id:'marines',name:'مشاة البحرية',desc:'قوات متخصصة في الإنزال والعمليات الساحلية.',cost:8500,duration:150,image:'marines.webp'},
-   {id:'heli',name:'مشاة مع هليكوبتر',desc:'وحدات مشاة مدعومة بالمروحيات للنقل والإسناد.',cost:11000,duration:180,image:'heli-infantry.webp'},
-   {id:'special',name:'مشاة قوات خاصة',desc:'قوات نخبة للاستطلاع والمهام الخاصة.',cost:15000,duration:240,image:'special-forces.webp'},
-   {id:'civil',name:'مشاة دفاع مدني',desc:'فرق حماية وإنقاذ وإخلاء وطوارئ.',cost:6500,duration:120,image:'civil-defense.webp'}]},
-  {id:'tanks',label:'الدبابات',items:[
-   {id:'main-tank',name:'دبابة قتال رئيسية',desc:'دبابة مدرعة ثقيلة لدعم القوات البرية.',cost:22000,duration:300,image:'special-forces.webp'},
-   {id:'light-tank',name:'دبابة خفيفة',desc:'مركبة مدرعة سريعة للاستطلاع والدعم.',cost:14000,duration:210,image:'infantry.webp'}]},
-  {id:'support',label:'الدعم',items:[
-   {id:'artillery',name:'مدفعية ميدانية',desc:'وحدات إسناد ناري بعيدة المدى ضمن نظام اللعبة.',cost:17000,duration:260,image:'bomber.webp'},
-   {id:'air-defense',name:'دفاع جوي',desc:'منظومات لحماية المواقع من التهديدات الجوية.',cost:16000,duration:240,image:'maritime-recon.webp'}]}
- ]},
- air:{label:'الجوي',tabs:[
-  {id:'helicopters',label:'الهليكوبتر',items:[
-   {id:'transport-heli',name:'هليكوبتر نقل',desc:'لنقل القوات والإمدادات بين المواقع.',cost:16000,duration:230,image:'heli-infantry.webp'},
-   {id:'attack-heli',name:'هليكوبتر هجومية',desc:'إسناد جوي للقوات البرية.',cost:21000,duration:300,image:'special-forces.webp'}]},
-  {id:'fighters',label:'الطائرات الحربية',items:[
-   {id:'fighter',name:'مقاتلة جوية',desc:'طائرة للسيطرة الجوية وحماية المجال الجوي.',cost:24000,duration:330,image:'maritime-recon.webp'},
-   {id:'multirole',name:'طائرة متعددة المهام',desc:'تنفذ مهام جوية متنوعة.',cost:26000,duration:360,image:'bomber.webp'}]},
-  {id:'heavy',label:'الطائرات الثقيلة',items:[
-   {id:'maritime-recon',name:'طائرة استطلاع بحري',desc:'طائرة مراقبة لمتابعة التحركات البحرية ورصد السواحل.',cost:18000,duration:300,image:'maritime-recon.webp'},
-   {id:'bomber',name:'قاذفات القنابل',desc:'طائرات ثقيلة للمهام الاستراتيجية داخل عالم اللعبة.',cost:26000,duration:420,image:'bomber.webp'}]}
- ]},
- sea:{label:'البحرية',tabs:[
-  {id:'ships',label:'السفن',items:[{id:'patrol-ship',name:'سفينة دورية',desc:'سفينة لمراقبة المياه وحماية السواحل.',cost:18000,duration:280,image:'maritime-recon.webp'},{id:'destroyer',name:'مدمرة',desc:'سفينة قتالية متعددة المهام.',cost:30000,duration:420,image:'bomber.webp'}]},
-  {id:'submarines',label:'الغواصات',items:[{id:'submarine',name:'غواصة هجومية',desc:'وحدة بحرية تعمل تحت سطح الماء.',cost:32000,duration:480,image:'maritime-recon.webp'}]},
-  {id:'carriers',label:'حاملة الطائرات',items:[{id:'carrier',name:'حاملة طائرات',desc:'سفينة كبيرة لتشغيل الطائرات من البحر.',cost:65000,duration:720,image:'bomber.webp'}]}
- ]},
- missiles:{label:'الصواريخ',tabs:[
-  {id:'nuclear',label:'الرؤوس النووية',items:[{id:'nuclear-warhead',name:'الرؤوس النووية',desc:'برنامج استراتيجي داخل اللعبة لإدارة المخزون النووي.',cost:50000,duration:600,image:'bomber.webp'}]},
-  {id:'missile-systems',label:'أنظمة الصواريخ',items:[{id:'ballistic',name:'صواريخ بالستية',desc:'منظومة صاروخية استراتيجية داخل اللعبة.',cost:28000,duration:420,image:'maritime-recon.webp'}]},
-  {id:'defense-missiles',label:'الدفاع الصاروخي',items:[{id:'missile-defense',name:'دفاع صاروخي',desc:'منظومة حماية ضد الهجمات الصاروخية.',cost:24000,duration:360,image:'civil-defense.webp'}]}
- ]}
-};
-const allUnits=Object.values(researchGroups).flatMap(g=>g.tabs.flatMap(t=>t.items));
+const infantryUnits=[
+ {id:'regular',name:'مشاة عاديون',desc:'قوات المشاة الأساسية لحماية المدن والسيطرة على الأراضي.',cost:5000,duration:90,image:'infantry.webp'},
+ {id:'marines',name:'مشاة البحرية',desc:'قوات متخصصة في الإنزال والعمليات الساحلية والقتال قرب السواحل.',cost:8500,duration:150,image:'marines.webp'},
+ {id:'heli',name:'مشاة مع هليكوبتر',desc:'وحدات مشاة مدعومة بالمروحيات لنقل الجنود والإسناد الجوي.',cost:11000,duration:180,image:'heli-infantry.webp'},
+ {id:'special',name:'مشاة قوات خاصة',desc:'قوات نخبة مدربة على الاستطلاع والمهام الخاصة عالية الخطورة.',cost:15000,duration:240,image:'special-forces.webp'},
+ {id:'civil',name:'مشاة دفاع مدني',desc:'فرق حماية وإنقاذ وإخلاء واستجابة للكوارث والطوارئ.',cost:6500,duration:120,image:'civil-defense.webp'}
+];
+const heavyAircraft=[
+ {id:'maritime-recon',name:'طائرة استطلاع بحري',desc:'طائرة مراقبة بعيدة المدى لمتابعة التحركات البحرية ورصد السواحل.',cost:18000,duration:300,image:'maritime-recon.webp'},
+ {id:'bomber',name:'قاذفات القنابل',desc:'طائرات ثقيلة مخصصة لمهام القصف الاستراتيجي داخل عالم اللعبة.',cost:26000,duration:420,image:'bomber.webp'}
+];
 const researches=[{id:'logistics',name:'اللوجستيات العسكرية',desc:'تحسين إدارة الإمدادات والمخازن.',cost:8500,duration:180,done:false},{id:'industry',name:'التصنيع المتقدم',desc:'يمهد لتطوير إنتاج الحديد والإلكترونيات.',cost:12000,duration:240,done:false}];
 const researchStates={};
 function formatResearchTime(seconds){const s=Math.max(0,Math.ceil(seconds));const m=Math.floor(s/60),r=s%60;return m?`${m} دقيقة ${r} ثانية`:`${r} ثانية`}
 function researchStatus(item){const state=researchStates[item.id];if(!state)return 'لم يبدأ';if(state.done)return 'مكتمل';return 'جارٍ البحث'}
-function researchCard(item){const state=researchStates[item.id],done=!!state?.done,running=!!state&&!done;return `<button class="unit-card unit-row ${done?'researched':''} ${running?'research-running':''}" data-unit="${item.id}"><img class="unit-photo" src="./game/assets/research/${item.image}" alt="${item.name}" loading="lazy" onerror="this.src='./game/assets/research/infantry.webp'"><span class="unit-card-name">${item.name}</span><small>${done?'بحث مكتمل':running?'جارٍ البحث':'بحث جديد'}</small></button>`}
+function researchCard(item){const state=researchStates[item.id],done=!!state?.done,running=!!state&&!done;return `<button class="unit-card ${done?'researched':''} ${running?'research-running':''}" data-unit="${item.id}"><img class="unit-photo" src="./game/assets/research/${item.image}" alt="${item.name}" loading="lazy"><span class="unit-card-name">${item.name}</span><small>${done?'بحث مكتمل':running?'جارٍ البحث':'بحث جديد'}</small></button>`}
+const researchCatalog={
+ ground:{
+  label:'الأرضية',tabs:[
+   {id:'infantry',label:'المشاة',units:infantryUnits},
+   {id:'tanks',label:'الدبابات',units:[
+    {id:'main-tank',name:'دبابة قتال رئيسية',desc:'دبابة مدرعة ثقيلة لمساندة القوات البرية والسيطرة على محاور التقدم.',cost:22000,duration:300,image:'infantry.webp'},
+    {id:'light-tank',name:'دبابة خفيفة',desc:'مركبة مدرعة سريعة للاستطلاع والإسناد في المناطق المفتوحة.',cost:15000,duration:210,image:'special-forces.webp'},
+    {id:'armored-car',name:'عربة مدرعة',desc:'عربة عسكرية مدرعة لنقل الأفراد وحماية الدوريات.',cost:12000,duration:180,image:'marines.webp'}
+   ]},
+   {id:'support',label:'الدعم',units:[
+    {id:'artillery',name:'مدفعية ميدانية',desc:'وحدات إسناد بعيدة المدى لدعم القوات البرية داخل ساحة المعركة.',cost:18000,duration:240,image:'bomber.webp'},
+    {id:'air-defense',name:'دفاع جوي',desc:'منظومات حماية المواقع والقوات من التهديدات الجوية.',cost:20000,duration:270,image:'maritime-recon.webp'},
+    {id:'logistics-support',name:'وحدات الإمداد',desc:'وحدات نقل وتجهيز للحفاظ على جاهزية القوات.',cost:9000,duration:150,image:'civil-defense.webp'}
+   ]}
+  ]
+ },
+ air:{
+  label:'الجوي',tabs:[
+   {id:'helicopter',label:'الهليكوبتر',units:[
+    {id:'transport-heli',name:'هليكوبتر نقل',desc:'مروحية لنقل الجنود والإمدادات بين المواقع.',cost:17000,duration:240,image:'heli-infantry.webp'},
+    {id:'attack-heli',name:'هليكوبتر هجومية',desc:'مروحية إسناد جوي للقوات البرية.',cost:23000,duration:300,image:'special-forces.webp'}
+   ]},
+   {id:'fighters',label:'الطائرات الحربية',units:[
+    {id:'fighter',name:'مقاتلة متعددة المهام',desc:'طائرة حربية لحماية الأجواء وتنفيذ مهام الاعتراض.',cost:28000,duration:360,image:'maritime-recon.webp'},
+    {id:'interceptor',name:'طائرة اعتراض',desc:'مقاتلة سريعة للاستجابة للتهديدات الجوية.',cost:26000,duration:330,image:'bomber.webp'}
+   ]},
+   {id:'heavy',label:'الطائرات الثقيلة',units:heavyAircraft}
+  ]
+ },
+ naval:{
+  label:'البحرية',tabs:[
+   {id:'ships',label:'السفن',units:[
+    {id:'patrol-ship',name:'سفينة دورية',desc:'سفينة لمراقبة المياه وحماية الممرات البحرية.',cost:16000,duration:240,image:'maritime-recon.webp'},
+    {id:'destroyer',name:'مدمرة بحرية',desc:'قطعة بحرية كبيرة لمرافقة الأسطول وحمايته.',cost:32000,duration:420,image:'bomber.webp'}
+   ]},
+   {id:'submarines',label:'الغواصات',units:[
+    {id:'diesel-sub',name:'غواصة تقليدية',desc:'غواصة للمهام البحرية والاستطلاع تحت سطح الماء.',cost:30000,duration:420,image:'maritime-recon.webp'}
+   ]},
+   {id:'carriers',label:'حاملة الطائرات',units:[
+    {id:'carrier',name:'حاملة طائرات',desc:'سفينة كبيرة لتشغيل الطائرات ودعم الأسطول البحري.',cost:65000,duration:600,image:'bomber.webp'}
+   ]}
+  ]
+ },
+ missiles:{
+  label:'الصواريخ',tabs:[
+   {id:'nuclear',label:'الرؤوس النووية',units:[
+    {id:'nuclear-warhead',name:'الرؤوس النووية',desc:'مخزون استراتيجي يظهر ضمن موارد الدولة. هذا عنصر محاكاة داخل اللعبة.',cost:80000,duration:600,image:'bomber.webp'}
+   ]}
+  ]
+ }
+};
+const allResearchUnits=Object.values(researchCatalog).flatMap(group=>group.tabs.flatMap(tab=>tab.units));
 function researchPanel(){
- let activeGroup='land',activeTab='infantry';
+ let activeBranch='ground',activeCategory='infantry',selectedUnit=null;
  const render=()=>{
-  const group=researchGroups[activeGroup];let tab=group.tabs.find(t=>t.id===activeTab)||group.tabs[0];activeTab=tab.id;
-  const groupButtons=Object.entries(researchGroups).map(([id,g])=>`<button class="research-major ${activeGroup===id?'active':''}" data-major="${id}">${g.label}</button>`).join('');
-  const tabsHtml=group.tabs.map(t=>`<button class="research-tab ${activeTab===t.id?'active':''}" data-category="${t.id}">${t.label}</button>`).join('');
-  const cards=tab.items.map(researchCard).join('');
-  showModal('مركز البحث العلمي',`<div class="research-major-tabs">${groupButtons}</div><div class="research-sub-tabs">${tabsHtml}</div><section class="research-main"><div class="research-banner"><div><h3>${group.label} • ${tab.label}</h3><p>اختر الوحدة لعرض صورتها وتفاصيل البحث.</p></div></div><div class="unit-card-list">${cards}</div><div id="unitResearchDetail" class="unit-research-detail"><p>اختر وحدة من القائمة لعرض تفاصيلها هنا.</p></div></section><div class="section-block other-research"><h3>أبحاث مساندة</h3>${researches.map(r=>`<div class="research-row"><div><b>${r.name}</b><small>${r.desc}</small><small>التكلفة: ${r.cost.toLocaleString('en-US')} 💰 • المدة: ${formatResearchTime(r.duration)}</small></div><button class="action-btn" data-research="${r.id}" ${r.done?'disabled':''}>${r.done?'مكتمل':'بدء البحث'}</button></div>`).join('')}</div>`);
-  modalContent.querySelectorAll('[data-major]').forEach(b=>b.onclick=()=>{activeGroup=b.dataset.major;activeTab=researchGroups[activeGroup].tabs[0].id;render()});
-  modalContent.querySelectorAll('[data-category]').forEach(b=>b.onclick=()=>{activeTab=b.dataset.category;render()});
+  const branch=researchCatalog[activeBranch];
+  if(!branch.tabs.some(t=>t.id===activeCategory))activeCategory=branch.tabs[0].id;
+  const tab=branch.tabs.find(t=>t.id===activeCategory),items=tab.units;
+  const branchButtons=Object.entries(researchCatalog).map(([id,g])=>`<button class="research-branch ${activeBranch===id?'active':''}" data-branch="${id}">${g.label}</button>`).join('');
+  const categoryButtons=branch.tabs.map(t=>`<button class="research-tab ${activeCategory===t.id?'active':''}" data-category="${t.id}">${t.label}</button>`).join('');
+  const rows=items.map(u=>`<button class="research-unit-row ${selectedUnit===u.id?'chosen':''}" data-unit="${u.id}"><img src="./game/assets/research/${u.image}" alt="${u.name}" onerror="this.onerror=null;this.src='./game/assets/research/infantry.webp'"><span>${u.name}<small>${researchStatus(u)}</small></span></button>`).join('');
+  const techCards=researches.map(r=>`<div class="research-row"><div><b>${r.name}</b><small>${r.desc}</small><small>التكلفة: ${r.cost.toLocaleString('en-US')} 💰 • المدة: ${formatResearchTime(r.duration)}</small></div><button class="action-btn" data-research="${r.id}" ${r.done?'disabled':''}>${r.done?'مكتمل':'عرض البحث'}</button></div>`).join('');
+  showModal('مركز البحث العلمي',`<div class="research-hub"><div class="research-branches">${branchButtons}</div><div class="research-subtabs">${categoryButtons}</div><div class="research-unit-list">${rows}</div><div id="unitResearchDetail" class="unit-research-detail"><p>اختر وحدة من القائمة لعرض صورتها وتفاصيلها.</p></div></div><div class="section-block other-research"><h3>أبحاث مساندة</h3>${techCards}</div>`);
+  modalContent.querySelectorAll('[data-branch]').forEach(b=>b.onclick=()=>{activeBranch=b.dataset.branch;activeCategory=researchCatalog[activeBranch].tabs[0].id;selectedUnit=null;render()});
+  modalContent.querySelectorAll('[data-category]').forEach(b=>b.onclick=()=>{activeCategory=b.dataset.category;selectedUnit=null;render()});
   modalContent.querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>{
+   selectedUnit=b.dataset.unit;const u=allResearchUnits.find(x=>x.id===selectedUnit),state=researchStates[u.id],remaining=state&&!state.done?(state.endAt-Date.now())/1000:0;
+   const progress=state?.done?100:state?Math.min(100,Math.max(0,(1-remaining/u.duration)*100)):0;
    modalContent.querySelectorAll('[data-unit]').forEach(x=>x.classList.toggle('chosen',x===b));
-   const u=allUnits.find(x=>x.id===b.dataset.unit),state=researchStates[u.id],detail=modalContent.querySelector('#unitResearchDetail');
-   const remaining=state&&!state.done?Math.max(0,(state.endAt-Date.now())/1000):0,progress=state?.done?100:state?Math.min(100,Math.max(0,(1-remaining/u.duration)*100)):0;
-   detail.innerHTML=`<div class="unit-detail-head"><img class="unit-detail-photo" src="./game/assets/research/${u.image}" alt="${u.name}" onerror="this.src='./game/assets/research/infantry.webp'"><div><h4>${u.name}</h4><p>${u.desc}</p><div class="research-meta"><span>التكلفة: <b>${u.cost.toLocaleString('en-US')} 💰</b></span><span>مدة البحث: <b>${formatResearchTime(u.duration)}</b></span><span>الحالة: <b>${researchStatus(u)}</b></span></div></div></div><div class="research-progress-wrap"><div class="progress"><i id="selectedResearchProgress" style="width:${progress}%"></i></div><small id="selectedResearchTime">${state?.done?'اكتمل البحث':state?`الوقت المتبقي: ${formatResearchTime(remaining)}`:'لم يبدأ البحث بعد'}</small></div><button class="action-btn unit-research-btn" id="startSelectedResearch" ${state?'disabled':''}>${state?.done?'تم إكمال البحث':state?'البحث جارٍ':'بدء البحث'}</button>`;
-   detail.querySelector('#startSelectedResearch').onclick=()=>{if(researchStates[u.id])return;if(economy.money<u.cost){alert('لا توجد أموال كافية لبدء البحث.');return}economy.money-=u.cost;researchStates[u.id]={startedAt:Date.now(),endAt:Date.now()+u.duration*1000,done:false};render();const card=modalContent.querySelector(`[data-unit="${u.id}"]`);if(card)card.click()};
+   const detail=modalContent.querySelector('#unitResearchDetail');
+   detail.innerHTML=`<div class="unit-detail-head"><img class="unit-detail-photo" src="./game/assets/research/${u.image}" alt="${u.name}" onerror="this.onerror=null;this.src='./game/assets/research/infantry.webp'"><div><h4>${u.name}</h4><p>${u.desc}</p><div class="research-meta"><span>التكلفة: <b>${u.cost.toLocaleString('en-US')} 💰</b></span><span>مدة البحث: <b>${formatResearchTime(u.duration)}</b></span><span>الحالة: <b>${researchStatus(u)}</b></span></div></div></div><div class="research-progress-wrap"><div class="progress"><i id="selectedResearchProgress" style="width:${progress}%"></i></div><small id="selectedResearchTime">${state?.done?'اكتمل البحث':state?`الوقت المتبقي: ${formatResearchTime(remaining)}`:'لم يبدأ البحث بعد'}</small></div><button class="action-btn unit-research-btn" id="startSelectedResearch" ${state?'disabled':''}>${state?.done?'تم إكمال البحث':state?'البحث جارٍ':'بدء البحث'}</button>`;
+   detail.querySelector('#startSelectedResearch').onclick=()=>{if(researchStates[u.id])return;if(economy.money<u.cost){alert('لا توجد أموال كافية لبدء البحث.');return}economy.money-=u.cost;researchStates[u.id]={startedAt:Date.now(),endAt:Date.now()+u.duration*1000,done:false};render();const row=modalContent.querySelector(`[data-unit="${u.id}"]`);if(row)row.click()};
   });
-  modalContent.querySelectorAll('[data-research]').forEach(b=>b.onclick=()=>{const r=researches.find(x=>x.id===b.dataset.research);if(!r||r.done)return;if(economy.money<r.cost){alert('لا توجد أموال كافية لبدء البحث.');return}economy.money-=r.cost;r.done=true;render()});
- };render();
+  modalContent.querySelectorAll('[data-research]').forEach(b=>b.onclick=()=>{const r=researches.find(x=>x.id===b.dataset.research);if(!r||r.done)return;if(economy.money<r.cost){alert('لا توجد أموال كافية لبدء البحث.');return}economy.money-=r.cost;r.done=true;researchPanel()});
+ };
+ render();
 }
-
 setInterval(()=>{
  Object.entries(researchStates).forEach(([id,state])=>{if(!state.done&&Date.now()>=state.endAt)state.done=true});
  const detail=modalContent?.querySelector('#unitResearchDetail');if(!detail)return;
- const selected=modalContent.querySelector('.unit-card.chosen');if(!selected)return;const state=researchStates[selected.dataset.unit];if(!state)return;
- const item=allUnits.find(x=>x.id===selected.dataset.unit);if(!item)return;
+ const selected=modalContent.querySelector('.research-unit-row.chosen');if(!selected)return;const state=researchStates[selected.dataset.unit];if(!state)return;
+ const item=allResearchUnits.find(x=>x.id===selected.dataset.unit);if(!item)return;
  const remaining=Math.max(0,(state.endAt-Date.now())/1000);const progress=state.done?100:Math.min(100,(1-remaining/item.duration)*100);
  const bar=detail.querySelector('#selectedResearchProgress'),time=detail.querySelector('#selectedResearchTime'),btn=detail.querySelector('#startSelectedResearch');if(bar)bar.style.width=`${progress}%`;if(time)time.textContent=state.done?'اكتمل البحث':`الوقت المتبقي: ${formatResearchTime(remaining)}`;if(btn&&state.done){btn.disabled=true;btn.textContent='تم إكمال البحث'}
  const small=selected.querySelector('small');if(small)small.textContent=state.done?'بحث مكتمل':'جارٍ البحث';
