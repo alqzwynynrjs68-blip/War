@@ -18,7 +18,53 @@ const svgNS='http://www.w3.org/2000/svg',svg=$('#iraqMap');
 function el(tag,attrs={},parent=svg){const n=document.createElementNS(svgNS,tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));parent.appendChild(n);return n}
 const project=([lon,lat])=>[(lon-38.5)*85.714,(37.5-lat)*95];
 function geometryPaths(geometry){let polys=geometry.type==='Polygon'?[geometry.coordinates]:geometry.coordinates;return polys.map(poly=>poly.map(ring=>ring.map((p,i)=>{let [x,y]=project(p);return `${i?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`} ).join(' ')+' Z').join(' ')).join(' ')}
-function addCity(c){let [x,y]=project([c.lon,c.lat]),g=el('g',{class:`city-marker ${c.capital?'capital':''}`,transform:`translate(${x} ${y})`,'data-city':c.id});el('ellipse',{class:'shadow',cx:0,cy:3,rx:c.capital?21:16,ry:6},g);el('rect',{class:'base',x:-16,y:-13,width:32,height:17,rx:3},g);let count=c.buildings;for(let i=0;i<count;i++){let bx=-12+i*9,by=-22-(i%2)*3;el('rect',{class:'building',x:bx,y:by,width:7,height:12+(i%2)*3,rx:1},g);el('path',{class:'roof',d:`M${bx-1} ${by} l4 -5 l4 5 z`},g)}let t=el('text',{x:0,y:20},g);t.textContent=c.name;g.addEventListener('click',e=>{e.stopPropagation();selectCity(c)});}
+function addBuilding3D(parent,x,y,w,h,kind='civil'){
+ const palette=kind==='capital'?['#d9c59d','#a88b63','#6e573e']:['#b9c4c5','#82969a','#536a70'];
+ el('polygon',{points:`${x},${y} ${x+w*.28},${y-4} ${x+w},${y} ${x+w*.72},${y+4}`,fill:'#e6d7b7',stroke:'#4b5660','stroke-width':.7},parent);
+ el('polygon',{points:`${x},${y} ${x+w*.72},${y+4} ${x+w*.72},${y+h+4} ${x},${y+h}`,fill:palette[0],stroke:'#394b55','stroke-width':.7},parent);
+ el('polygon',{points:`${x+w*.72},${y+4} ${x+w},${y} ${x+w},${y+h} ${x+w*.72},${y+h+4}`,fill:palette[1],stroke:'#394b55','stroke-width':.7},parent);
+ for(let wy=y+5;wy<y+h-2;wy+=6)for(let wx=x+3;wx<x+w*.65;wx+=6)el('rect',{x:wx,y:wy,width:2.2,height:2.6,fill:'#f3d99a',opacity:.9},parent);
+}
+function addSoldier(parent,x,y,index){
+ const g=el('g',{class:'map-soldier',transform:`translate(${x} ${y}) scale(${index===0?1:.92})`},parent);
+ el('ellipse',{cx:0,cy:2,rx:4.2,ry:1.7,fill:'#071019',opacity:.65},g);
+ el('path',{d:'M-2 -1 L-3 5 L-1 5 L1 0 L2 5 L4 5 L3 -1 Z',fill:'#303d35',stroke:'#18251f','stroke-width':.6},g);
+ el('path',{d:'M-3 -8 L3 -8 L4 -1 L-4 -1 Z',fill:'#56664a',stroke:'#1d2b25','stroke-width':.7},g);
+ el('circle',{cx:0,cy:-10,r:2.5,fill:'#c89b72',stroke:'#4c3829','stroke-width':.5},g);
+ el('path',{d:'M-3 -11 Q0 -15 3 -11 L3 -9 L-3 -9 Z',fill:'#26372f',stroke:'#111e19','stroke-width':.6},g);
+ el('path',{d:'M2 -7 L7 -11 L8 -10 L4 -5',stroke:'#1a2426','stroke-width':1.6,'stroke-linecap':'round',fill:'none'},g);
+ el('path',{d:'M5 -12 L10 -12',stroke:'#111a20','stroke-width':1.3,'stroke-linecap':'round'},g);
+}
+function addAirport(parent){
+ const a=el('g',{class:'capital-airport',transform:'translate(29 -20)'},parent);
+ el('rect',{x:-2,y:-5,width:66,height:15,rx:2,fill:'#29353c',stroke:'#d3c9aa','stroke-width':1},a);
+ for(let x=4;x<60;x+=10)el('path',{d:`M${x} 2 h5`,stroke:'#f1e8c8','stroke-width':.8},a);
+ el('rect',{x:12,y:-10,width:15,height:5,fill:'#a8b4b3',stroke:'#46555a','stroke-width':.8},a);
+ el('path',{d:'M18 -8 l-3 -4 h8 l3 4',fill:'#d6e0df',stroke:'#53656b','stroke-width':.7},a);
+ el('text',{x:32,y:19,class:'asset-label'},a).textContent='المطار';
+}
+function addFighter(parent){
+ const plane=el('g',{class:'air-superiority-fighter',transform:'translate(45 -29) rotate(-12)'},parent);
+ el('ellipse',{cx:0,cy:3,rx:13,ry:3,fill:'#071019',opacity:.55},plane);
+ el('path',{d:'M-16 0 L-4 -2 L1 -13 L5 -13 L4 -2 L15 0 L15 2 L4 3 L2 9 L-1 9 L-4 3 L-16 2 Z',fill:'#9aa8ad',stroke:'#263b48','stroke-width':1},plane);
+ el('path',{d:'M-1 -2 L4 -2 L7 0 L-1 1 Z',fill:'#dce8e8',stroke:'#4e6977','stroke-width':.5},plane);
+ el('text',{x:0,y:16,class:'asset-label'},plane).textContent='مقاتلة';
+}
+function addCity(c){
+ let [x,y]=project([c.lon,c.lat]);
+ const g=el('g',{class:`city-marker ${c.capital?'capital':''}`,transform:`translate(${x} ${y})`,'data-city':c.id});
+ el('ellipse',{class:'shadow',cx:0,cy:5,rx:c.capital?43:29,ry:c.capital?13:9},g);
+ // مدينة مصغرة بمنظور مجسم: قاعدة، شوارع، ومبانٍ ذات واجهات جانبية.
+ el('polygon',{points:c.capital?'-39,-8 0,-25 42,-7 2,12':'-27,-5 0,-17 29,-4 1,9',class:'city-ground'},g);
+ el('path',{d:c.capital?'M-31 -7 L1 7 L34 -7':'M-21 -4 L1 5 L24 -4',class:'city-road'},g);
+ const positions=c.capital?[[-27,-14,11,17],[-13,-20,12,23],[2,-14,11,17],[17,-18,12,21],[-3,-30,13,26]]:[[-19,-10,10,14],[-6,-16,11,20],[8,-10,10,14]];
+ positions.forEach((v,i)=>addBuilding3D(g,...v,c.capital&&i===4?'capital':'civil'));
+ // جنديان ثابتان في كل مدينة.
+ addSoldier(g,-10,10,0);addSoldier(g,10,10,1);
+ if(c.capital){addAirport(g);addFighter(g);el('path',{d:'M-43 -31 L-35 -40 L-27 -31 Z',fill:'#f1c66f',stroke:'#fff0bc','stroke-width':1},g);}
+ const t=el('text',{x:0,y:c.capital?29:23,class:'city-name'},g);t.textContent=c.name;
+ g.addEventListener('click',e=>{e.stopPropagation();selectCity(c)});
+}
 function selectProvince(feature,path){document.querySelectorAll('.province').forEach(p=>p.classList.remove('selected'));document.querySelectorAll('.city-marker').forEach(c=>c.classList.remove('selected'));path.classList.add('selected')}
 function selectCity(c){document.querySelectorAll('.city-marker').forEach(marker=>marker.classList.remove('selected'));document.querySelectorAll('.province').forEach(p=>p.classList.remove('selected'));const marker=svg.querySelector(`[data-city="${c.id}"]`);if(marker)marker.classList.add('selected')}
 async function init(){const [geo,citiesData]=await Promise.all([fetch('./game/data/iraq-provinces.geojson').then(r=>r.json()),fetch('./game/data/cities.json').then(r=>r.json())]);

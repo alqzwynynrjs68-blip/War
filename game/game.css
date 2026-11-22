@@ -69,3 +69,17 @@
 .map-wrap,.map-wrap svg{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .resourcebar .nuclear-resource{border-color:#7b6541;background:linear-gradient(145deg,#2b261c,#17202a)}
 .resourcebar .nuclear-resource b{color:#f0d28f}
+
+/* مجسمات المدن والوحدات على الخريطة */
+.city-marker .city-ground{fill:#536b64;stroke:#d9c79c;stroke-width:1.1;filter:drop-shadow(0 2px 2px #0008)}
+.city-marker .city-road{fill:none;stroke:#d8cba9;stroke-width:2.1;stroke-linecap:round;opacity:.95}
+.city-marker .building{fill:#d2c3a2;stroke:#514b3e;stroke-width:.7}
+.city-marker .roof{fill:#9d704b}
+.city-marker.capital .city-ground{fill:#927044;stroke:#ffe2a1;stroke-width:1.8}
+.city-marker.capital .building{fill:#e5d2a8;stroke:#70512f}
+.city-marker .city-name{font-size:12px;fill:#fff4d7;paint-order:stroke;stroke:#17232b;stroke-width:3.4px;text-anchor:middle;font-weight:800}
+.map-soldier{filter:drop-shadow(0 1px 1px #0009)}
+.capital-airport{filter:drop-shadow(0 1px 2px #0009)}
+.asset-label{font-size:5px;fill:#f8e8c2;text-anchor:middle;paint-order:stroke;stroke:#17232b;stroke-width:1.6px;font-weight:700}
+.air-superiority-fighter{filter:drop-shadow(0 1px 2px #0009)}
+.city-marker.selected .city-ground{stroke:#fff3b5;stroke-width:2.8}
