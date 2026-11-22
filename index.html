@@ -16,17 +16,16 @@
   <button id="iraqChoice" class="country-choice"><span class="flag">🇮🇶</span><span><b>جمهورية العراق</b><small>18 محافظة • خريطة محلية</small></span><span class="arrow">←</span></button>
 </div>
 <main id="gameScreen" class="game hidden">
-<header class="game-header"><div><span class="eyebrow">حملة جديدة</span><h1>السيطرة على العالم</h1></div><button id="menuBtn" class="ghost">القائمة</button></header>
-<section class="statusbar"><div><small>الدولة</small><b>🇮🇶 العراق</b></div><div><small>المحافظات</small><b>18</b></div><div><small>المدن الرئيسية</small><b>8</b></div><div><small>العاصمة</small><b>بغداد</b></div></section>
-<div class="layout">
-<section class="map-panel"><div class="map-heading"><div><span class="eyebrow">خريطة العمليات</span><h2>العراق</h2></div><span class="map-hint">اضغط على محافظة أو مدينة</span></div>
-<div class="map-wrap"><svg id="iraqMap" viewBox="0 0 900 855" role="img" aria-label="خريطة محافظات العراق التفاعلية"></svg></div>
+<header class="game-header"><div><span class="eyebrow">إدارة الدولة • حملة جديدة</span><h1>السيطرة على العالم</h1></div><button id="menuBtn" class="ghost">القائمة</button></header>
+<section class="statusbar resourcebar">
+<div><small>الدولة</small><b>🇮🇶 العراق</b></div><div><small>الخزينة</small><b>💰 250,000</b></div><div><small>النفط</small><b>🛢️ 1,250</b></div><div><small>الغذاء</small><b>🌾 8,400</b></div><div><small>السكان</small><b>👥 45.2 مليون</b></div>
+</section>
+<section class="map-panel"><div class="map-heading"><div><span class="eyebrow">خريطة العمليات</span><h2>جمهورية العراق</h2></div><span class="map-hint">المس واسحب للتحريك • قرّب بإصبعين أو عجلة الفأرة</span></div>
+<div class="map-wrap" id="mapViewport"><svg id="iraqMap" viewBox="0 0 900 855" role="img" aria-label="خريطة محافظات العراق التفاعلية"></svg><div class="zoom-tools"><button id="zoomIn" aria-label="تكبير">＋</button><button id="zoomOut" aria-label="تصغير">−</button><button id="zoomReset" aria-label="إعادة ضبط">⌂</button></div></div>
 <div class="legend"><span><i class="province-key"></i> حدود المحافظات</span><span><i class="city-key"></i> مدينة</span><span><i class="capital-key"></i> العاصمة</span></div>
 </section>
-<aside class="info-panel"><div class="panel-title"><span>معلومات المنطقة</span><span class="live">● مباشر</span></div><div id="details" class="details"><div class="empty-icon">⌖</div><h3>اختر منطقة من الخريطة</h3><p>ستظهر هنا معلومات المحافظة والمدينة المحددة.</p></div>
-<div class="cities-list"><h3>المدن الرئيسية</h3><div id="cityButtons"></div></div></aside>
-</div>
-<footer>بيانات الحدود الجغرافية للمحافظات الـ18 مضمّنة محلياً داخل ملفات اللعبة.</footer>
+<nav class="bottom-nav" aria-label="القائمة الرئيسية"><button data-tab="state" class="active"><span>🏛️</span>الدولة</button><button data-tab="diplomacy"><span>🤝</span>الدبلوماسية</button><button data-tab="trade"><span>⚖️</span>التجارة</button><button data-tab="research"><span>🔬</span>البحث</button></nav>
+<div id="gameModal" class="game-modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><div class="modal-head"><h2 id="modalTitle">الدولة</h2><button id="closeModal" aria-label="إغلاق">✕</button></div><div id="modalContent" class="modal-content"></div></div></div>
 </main>
 <script src="./game/game.js"></script>
 </body></html>
