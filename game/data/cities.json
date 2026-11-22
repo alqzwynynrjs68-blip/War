@@ -1,0 +1,10 @@
+[
+ {"id":"baghdad","name":"بغداد","province":"بغداد","lon":44.3661,"lat":33.3152,"capital":true,"size":"capital"},
+ {"id":"ramadi","name":"الرمادي","province":"الأنبار","lon":43.3050,"lat":33.4230,"capital":false,"size":"large"},
+ {"id":"basra","name":"البصرة","province":"البصرة","lon":47.7804,"lat":30.5085,"capital":false,"size":"large"},
+ {"id":"najaf","name":"النجف","province":"النجف","lon":44.0150,"lat":32.0000,"capital":false,"size":"large"},
+ {"id":"sulaymaniyah","name":"السليمانية","province":"السليمانية","lon":45.4351,"lat":35.5613,"capital":false,"size":"large"},
+ {"id":"mosul","name":"الموصل","province":"نينوى","lon":43.1189,"lat":36.3350,"capital":false,"size":"large"},
+ {"id":"amara","name":"العمارة","province":"ميسان","lon":47.1408,"lat":31.8356,"capital":false,"size":"medium"},
+ {"id":"kut","name":"الكوت","province":"واسط","lon":45.8182,"lat":32.5128,"capital":false,"size":"medium"}
+]
