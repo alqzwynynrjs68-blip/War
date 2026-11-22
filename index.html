@@ -14,6 +14,7 @@
 <div id="countryScreen" class="screen country-screen hidden">
   <button class="back" id="backStart">رجوع</button><p class="eyebrow">اختر ساحة البداية</p><h2>اختيار الدولة</h2>
   <button id="iraqChoice" class="country-choice"><span class="flag">🇮🇶</span><span><b>جمهورية العراق</b><small>18 محافظة • خريطة محلية</small></span><span class="arrow">←</span></button>
+  <button id="kuwaitChoice" class="country-choice"><span class="flag">🇰🇼</span><span><b>دولة الكويت</b><small>6 محافظات • مدينة الكويت العاصمة</small></span><span class="arrow">←</span></button>
 </div>
 <main id="gameScreen" class="game hidden">
 <header class="game-header"><div><span class="eyebrow">إدارة الدولة • حملة جديدة</span><h1>السيطرة على العالم</h1></div><button id="menuBtn" class="ghost">القائمة</button></header>
@@ -22,7 +23,7 @@
 </section>
 <section class="map-panel"><div class="map-heading"><div><span class="eyebrow">خريطة العمليات</span><h2>جمهورية العراق</h2></div><span class="map-hint">حرّك بإصبع واحد • كبّر وصغّر بإصبعين</span></div>
 <div class="map-wrap" id="mapViewport"><svg id="iraqMap" viewBox="0 0 900 855" role="img" aria-label="خريطة محافظات العراق التفاعلية"></svg><div class="zoom-tools"><button id="zoomIn" aria-label="تكبير">＋</button><button id="zoomOut" aria-label="تصغير">−</button><button id="zoomReset" aria-label="إعادة ضبط">⌂</button></div></div>
-<div class="legend"><span><i class="province-key"></i> حدود المحافظات</span><span><i class="city-key"></i> مدينة</span><span><i class="capital-key"></i> العاصمة</span></div>
+<div id="cityButtons" class="city-buttons hidden"></div><div class="legend"><span><i class="province-key"></i> حدود المحافظات</span><span><i class="city-key"></i> مدينة</span><span><i class="capital-key"></i> العاصمة</span></div>
 </section>
 <nav class="bottom-nav" aria-label="القائمة الرئيسية"><button data-tab="state" class="active"><span>🏛️</span>الدولة</button><button data-tab="diplomacy"><span>🤝</span>الدبلوماسية</button><button data-tab="trade"><span>⚖️</span>التجارة</button><button data-tab="research"><span>🔬</span>البحث</button></nav>
 <div id="gameModal" class="game-modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><div class="modal-head"><h2 id="modalTitle">الدولة</h2><button id="closeModal" aria-label="إغلاق">✕</button></div><div id="modalContent" class="modal-content"></div></div></div>
