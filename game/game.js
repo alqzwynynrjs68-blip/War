@@ -19,60 +19,46 @@ function el(tag,attrs={},parent=svg){const n=document.createElementNS(svgNS,tag)
 const project=([lon,lat])=>[(lon-38.5)*85.714,(37.5-lat)*95];
 function geometryPaths(geometry){let polys=geometry.type==='Polygon'?[geometry.coordinates]:geometry.coordinates;return polys.map(poly=>poly.map(ring=>ring.map((p,i)=>{let [x,y]=project(p);return `${i?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`} ).join(' ')+' Z').join(' ')).join(' ')}
 function addBuilding3D(parent,x,y,w,h,kind='civil'){
- // مبانٍ منخفضة ذات خامات هادئة وتفاصيل معمارية دقيقة، دون ارتفاعات مبالغ بها.
- const wall=kind==='capital'?'#b9aa8d':'#aeb5b0',side=kind==='capital'?'#77776d':'#737f7e',roof=kind==='capital'?'#d1c2a2':'#c4c9c1';
- el('polygon',{points:`${x},${y} ${x+w*.28},${y-2.5} ${x+w},${y} ${x+w*.72},${y+2.5}`,fill:roof,stroke:'#4c5655','stroke-width':.65},parent);
- el('polygon',{points:`${x},${y} ${x+w*.72},${y+2.5} ${x+w*.72},${y+h+2.5} ${x},${y+h}`,fill:wall,stroke:'#4c5655','stroke-width':.65},parent);
- el('polygon',{points:`${x+w*.72},${y+2.5} ${x+w},${y} ${x+w},${y+h} ${x+w*.72},${y+h+2.5}`,fill:side,stroke:'#465151','stroke-width':.65},parent);
- for(let wy=y+4;wy<y+h-1;wy+=5)for(let wx=x+3;wx<x+w*.62;wx+=5)el('rect',{x:wx,y:wy,width:1.7,height:2,fill:'#e7d7b3',opacity:.72},parent);
- el('path',{d:`M${x+2} ${y+h-2} H${x+w*.68}`,stroke:'#756c5d','stroke-width':.6,opacity:.8},parent);
+ const palette=kind==='capital'?['#d9c59d','#a88b63','#6e573e']:['#b9c4c5','#82969a','#536a70'];
+ el('polygon',{points:`${x},${y} ${x+w*.28},${y-4} ${x+w},${y} ${x+w*.72},${y+4}`,fill:'#e6d7b7',stroke:'#4b5660','stroke-width':.7},parent);
+ el('polygon',{points:`${x},${y} ${x+w*.72},${y+4} ${x+w*.72},${y+h+4} ${x},${y+h}`,fill:palette[0],stroke:'#394b55','stroke-width':.7},parent);
+ el('polygon',{points:`${x+w*.72},${y+4} ${x+w},${y} ${x+w},${y+h} ${x+w*.72},${y+h+4}`,fill:palette[1],stroke:'#394b55','stroke-width':.7},parent);
+ for(let wy=y+5;wy<y+h-2;wy+=6)for(let wx=x+3;wx<x+w*.65;wx+=6)el('rect',{x:wx,y:wy,width:2.2,height:2.6,fill:'#f3d99a',opacity:.9},parent);
 }
 function addSoldier(parent,x,y,index){
- // هيئة جندي مصغرة بتناسبات واقعية وألوان عسكرية مطفأة.
+ // وحدة مشاة بصورة مجسمة شبه حقيقية، مع ظل خفيف يثبتها بصرياً على أرض المدينة.
  const g=el('g',{class:'map-soldier',transform:`translate(${x} ${y}) scale(${index===0?1:.94})`},parent);
- el('ellipse',{cx:0,cy:2,rx:4.4,ry:1.35,fill:'#081018',opacity:.48},g);
- el('path',{d:'M-2.7 -2 L-3.2 4 L-1 4 L.4 -1 L1.7 4 L3.7 4 L2.8 -2 Z',fill:'#343e36',stroke:'#202a25','stroke-width':.55},g);
- el('path',{d:'M-3.2 -8 L-2 -9.5 L2 -9.5 L3.2 -8 L3.8 -2 L-3.8 -2 Z',fill:'#59634b',stroke:'#263229','stroke-width':.65},g);
- el('path',{d:'M-2.7 -7 L-4.5 -4 L-3.5 -3 L-1.5 -6 M2.7 -7 L4.5 -4 L3.5 -3 L1.5 -6',fill:'none',stroke:'#59634b','stroke-width':1.5,'stroke-linecap':'round'},g);
- el('circle',{cx:0,cy:-11.2,r:2.15,fill:'#b88f70',stroke:'#5b4636','stroke-width':.45},g);
- el('path',{d:'M-2.8 -11.5 Q-2.2 -15 0 -14.8 Q2.8 -14.6 2.8 -11.5 L2.2 -10.4 L-2.5 -10.4 Z',fill:'#344238',stroke:'#1d2923','stroke-width':.6},g);
- el('path',{d:'M2.5 -7 L6.5 -10.5 L7.2 -9.7 L4.1 -5.4',fill:'none',stroke:'#313a35','stroke-width':1.5,'stroke-linecap':'round'},g);
- el('path',{d:'M5.5 -11 L9.2 -11.8 L9.7 -11 L6.3 -9.8 Z',fill:'#202b2a',stroke:'#10191b','stroke-width':.45},g);
- el('path',{d:'M-2 -7 L-1 -4 M1 -7 L2 -4',stroke:'#a08a65','stroke-width':.65,opacity:.75},g);
+ el('ellipse',{cx:0,cy:1.5,rx:5.1,ry:2.0,fill:'#071019',opacity:.48},g);
+ el('image',{href:'./game/assets/soldier-infantry.png',x:-5.8,y:-17.5,width:11.6,height:19.2,preserveAspectRatio:'xMidYMax meet',class:'soldier-sprite'},g);
 }
 function addAirport(parent){
- // مطار بغداد موضوع غرب مركز المدينة داخل حدود محافظة بغداد (موضع مطار بغداد الدولي).
- const a=el('g',{class:'capital-airport',transform:'translate(-31 8)'},parent);
- el('ellipse',{cx:8,cy:4,rx:35,ry:8,fill:'#081018',opacity:.28},a);
- el('rect',{x:-31,y:-4,width:75,height:12,rx:1.5,fill:'#4d5555',stroke:'#b6b7a9','stroke-width':.8,transform:'rotate(-7 6 2)'},a);
- for(let x=-26;x<39;x+=8)el('path',{d:`M${x} 1 l5 -.6`,stroke:'#e7e1c9','stroke-width':.7,opacity:.85},a);
- el('path',{d:'M-4 -8 L17 -8 L23 -4 L23 4 L-8 4 L-8 -4 Z',fill:'#b5b8ad',stroke:'#525e60','stroke-width':.8},a);
- el('path',{d:'M-1 -8 L3 -13 L13 -13 L17 -8',fill:'#d4d0bf',stroke:'#697477','stroke-width':.65},a);
- el('rect',{x:1,y:-11,width:8,height:2.5,fill:'#52636a',opacity:.9},a);
- el('text',{x:6,y:17,class:'asset-label'},a).textContent='مطار بغداد';
+ const a=el('g',{class:'capital-airport',transform:'translate(29 -20)'},parent);
+ el('rect',{x:-2,y:-5,width:66,height:15,rx:2,fill:'#29353c',stroke:'#d3c9aa','stroke-width':1},a);
+ for(let x=4;x<60;x+=10)el('path',{d:`M${x} 2 h5`,stroke:'#f1e8c8','stroke-width':.8},a);
+ el('rect',{x:12,y:-10,width:15,height:5,fill:'#a8b4b3',stroke:'#46555a','stroke-width':.8},a);
+ el('path',{d:'M18 -8 l-3 -4 h8 l3 4',fill:'#d6e0df',stroke:'#53656b','stroke-width':.7},a);
+ el('text',{x:32,y:19,class:'asset-label'},a).textContent='المطار';
 }
 function addFighter(parent){
- // مقاتلة نفاثة من أعلى، بأجنحة وذيل ومحركات واضحة دون مظهر كرتوني.
- const p=el('g',{class:'air-superiority-fighter',transform:'translate(-2 -27) rotate(-18)'},parent);
- el('ellipse',{cx:1,cy:5,rx:14,ry:2.6,fill:'#071019',opacity:.36},p);
- el('path',{d:'M-17 1 L-5 -1 L-1 -12 L2 -14 L5 -2 L16 1 L16 3 L5 4 L3 10 L0 10 L-4 4 L-17 3 Z',fill:'#89969a',stroke:'#29383d','stroke-width':.9},p);
- el('path',{d:'M-4 1 L2 -1 L8 1 L2 2 Z',fill:'#c6d0cd',stroke:'#526269','stroke-width':.5},p);
- el('path',{d:'M-2 -10 L2 -10 L3 -3 L-3 -3 Z',fill:'#536a73',stroke:'#263b43','stroke-width':.5},p);
- el('path',{d:'M-1 7 L1 7 L2 12 L-2 12 Z',fill:'#59666a'},p);
- el('text',{x:0,y:19,class:'asset-label'},p).textContent='مقاتلة جوية';
+ const plane=el('g',{class:'air-superiority-fighter',transform:'translate(45 -29) rotate(-12)'},parent);
+ el('ellipse',{cx:0,cy:3,rx:13,ry:3,fill:'#071019',opacity:.55},plane);
+ el('path',{d:'M-16 0 L-4 -2 L1 -13 L5 -13 L4 -2 L15 0 L15 2 L4 3 L2 9 L-1 9 L-4 3 L-16 2 Z',fill:'#9aa8ad',stroke:'#263b48','stroke-width':1},plane);
+ el('path',{d:'M-1 -2 L4 -2 L7 0 L-1 1 Z',fill:'#dce8e8',stroke:'#4e6977','stroke-width':.5},plane);
+ el('text',{x:0,y:16,class:'asset-label'},plane).textContent='مقاتلة';
 }
 function addCity(c){
  let [x,y]=project([c.lon,c.lat]);
  const g=el('g',{class:`city-marker ${c.capital?'capital':''}`,transform:`translate(${x} ${y})`,'data-city':c.id});
- el('ellipse',{class:'shadow',cx:0,cy:5,rx:c.capital?39:27,ry:c.capital?10:7},g);
- el('polygon',{points:c.capital?'-36,-7 0,-21 37,-7 1,9':'-25,-5 0,-15 27,-4 1,7',class:'city-ground'},g);
- el('path',{d:c.capital?'M-29 -6 L1 5 L31 -6':'M-19 -4 L1 4 L21 -4',class:'city-road'},g);
- const positions=c.capital?[[-25,-12,10,12],[-12,-16,11,16],[1,-12,10,12],[14,-15,10,15],[-2,-24,11,15]]:[[-17,-9,9,10],[-5,-13,10,13],[8,-8,9,10]];
+ el('ellipse',{class:'shadow',cx:0,cy:5,rx:c.capital?43:29,ry:c.capital?13:9},g);
+ // مدينة مصغرة بمنظور مجسم: قاعدة، شوارع، ومبانٍ ذات واجهات جانبية.
+ el('polygon',{points:c.capital?'-39,-8 0,-25 42,-7 2,12':'-27,-5 0,-17 29,-4 1,9',class:'city-ground'},g);
+ el('path',{d:c.capital?'M-31 -7 L1 7 L34 -7':'M-21 -4 L1 5 L24 -4',class:'city-road'},g);
+ const positions=c.capital?[[-27,-14,11,17],[-13,-20,12,23],[2,-14,11,17],[17,-18,12,21],[-3,-30,13,26]]:[[-19,-10,10,14],[-6,-16,11,20],[8,-10,10,14]];
  positions.forEach((v,i)=>addBuilding3D(g,...v,c.capital&&i===4?'capital':'civil'));
- // جنديان صغيران عند كل مدينة، مع تفاصيل معدات وملابس عسكرية هادئة.
- addSoldier(g,-9,8,0);addSoldier(g,9,8,1);
- if(c.capital){addAirport(g);addFighter(g);el('path',{d:'M-38 -25 L-31 -33 L-24 -25 Z',fill:'#c7a66c',stroke:'#ead5a8','stroke-width':.8},g);}
- const t=el('text',{x:0,y:c.capital?25:20,class:'city-name'},g);t.textContent=c.name;
+ // جنديان ثابتان في كل مدينة.
+ addSoldier(g,-10,10,0);addSoldier(g,10,10,1);
+ if(c.capital){addAirport(g);addFighter(g);el('path',{d:'M-43 -31 L-35 -40 L-27 -31 Z',fill:'#f1c66f',stroke:'#fff0bc','stroke-width':1},g);}
+ const t=el('text',{x:0,y:c.capital?29:23,class:'city-name'},g);t.textContent=c.name;
  g.addEventListener('click',e=>{e.stopPropagation();selectCity(c)});
 }
 function selectProvince(feature,path){document.querySelectorAll('.province').forEach(p=>p.classList.remove('selected'));document.querySelectorAll('.city-marker').forEach(c=>c.classList.remove('selected'));path.classList.add('selected')}
@@ -84,9 +70,9 @@ geo.features.forEach(f=>{let path=el('path',{d:geometryPaths(f.geometry),class:'
 // province labels at geographic centroids derived from the boundary coordinates
 geo.features.forEach(f=>{let pts=[];let polys=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;polys.forEach(poly=>poly[0].forEach(p=>pts.push(p)));let lon=pts.reduce((s,p)=>s+p[0],0)/pts.length,lat=pts.reduce((s,p)=>s+p[1],0)/pts.length;let [x,y]=project([lon,lat]);let t=el('text',{x,y,class:'province-label'});t.textContent=f.properties.name_ar||names[f.properties.shapeISO]});
 citiesData.forEach(addCity);
-
+const buttons=$('#cityButtons');buttons.className='city-buttons';citiesData.forEach(c=>{let b=document.createElement('button');b.textContent=(c.capital?'★ ':'')+c.name;b.onclick=()=>selectCity(c);buttons.appendChild(b)});
 }
-$('#iraqChoice').onclick=()=>{countryScreen.classList.add('hidden');gameScreen.classList.remove('hidden');init().catch(err=>{console.error(err);console.error('تعذر تحميل بيانات الخريطة المحلية.')})};
+$('#iraqChoice').onclick=()=>{countryScreen.classList.add('hidden');gameScreen.classList.remove('hidden');init().catch(err=>{console.error(err);$('#details').textContent='تعذر تحميل بيانات الخريطة المحلية.'})};
 
 // واجهة إدارة الدولة والتحكم بالخريطة
 const mapSvg=$('#iraqMap'),mapViewport=$('#mapViewport');
