@@ -32,3 +32,35 @@
 .unit-research-btn{margin-top:12px}
 .other-research{border-top:1px solid #344958;padding-top:12px}
 @media(max-width:390px){.resource-ledger-grid{grid-template-columns:1fr}.unit-card-grid{gap:7px}.ledger-values b{font-size:11px}}
+
+/* Research center: photographic unit cards, category navigation and timed research */
+.research-layout{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;align-items:start}
+.research-side{background:#142532;border:1px solid #3c5667;border-radius:12px;padding:10px;position:sticky;top:62px}
+.research-side h3{margin:2px 0 10px}
+.research-tabs{display:grid;gap:7px}
+.research-tab{border:1px solid #3c5667;background:linear-gradient(145deg,#263d4d,#172936);color:#dce8ee;border-radius:9px;padding:11px 8px;text-align:right;font-weight:700;font-size:12px}
+.research-tab.active{border-color:#6eb9ed;background:linear-gradient(145deg,#17639b,#163d60);box-shadow:0 0 14px #2c9de755}
+.research-side-note{font-size:10px;line-height:1.8;color:#8fa7b5;margin-top:12px}
+.research-banner{min-height:84px;border-radius:12px;padding:14px 16px;margin-bottom:11px;display:flex;align-items:center;background:linear-gradient(90deg,#122331eF,#193b51d9),url('./assets/research/heli-infantry.webp') center 42%/cover;border:1px solid #526c7b}
+.research-banner h3{font-size:18px;margin:0 0 5px;color:#f4d28c}
+.research-banner p{margin:0;color:#d8e4e9;font-size:11px}
+.unit-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.unit-card{overflow:hidden;padding:0 0 9px;background:linear-gradient(155deg,#223746,#14232e);border:1px solid #425b6b;border-radius:12px;color:#e9f0f2;text-align:right;min-width:0;display:flex;flex-direction:column;gap:6px;cursor:pointer;transition:border-color .18s,transform .18s,box-shadow .18s}
+.unit-card:active{transform:scale(.985)}
+.unit-card.chosen{border-color:#e7c078;box-shadow:0 0 0 1px #e7c07888,0 6px 18px #0006}
+.unit-card.researched{border-color:#609a78}
+.unit-photo{display:block;width:100%;height:118px;object-fit:cover;background:#152633}
+.unit-card-name,.unit-card small{padding:0 9px}
+.unit-card-name{font-size:12px;font-weight:800;line-height:1.5}
+.unit-card small{font-size:10px;color:#a8bbc5}
+.unit-detail-head{display:grid;grid-template-columns:130px minmax(0,1fr);gap:12px;align-items:start}
+.unit-detail-photo{width:100%;height:112px;object-fit:cover;border-radius:9px;border:1px solid #536d7d}
+.unit-detail-head h4{margin:2px 0 5px;color:#f1d49e;font-size:15px}
+.unit-detail-head p{margin:0 0 8px}
+.research-meta{display:grid;gap:5px;color:#aebfc8;font-size:11px}
+.research-meta b{color:#f1d49e}
+.research-progress-wrap{margin-top:12px}
+.research-progress-wrap .progress{height:8px}
+.research-progress-wrap small{display:block;margin-top:6px;color:#a9bbc5;font-size:10px}
+.research-running{border-color:#4c9fcb}
+@media(max-width:520px){.research-layout{grid-template-columns:1fr}.research-side{position:static}.research-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.unit-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.unit-photo{height:105px}.unit-detail-head{grid-template-columns:105px minmax(0,1fr)}}
