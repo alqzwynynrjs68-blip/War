@@ -34,15 +34,36 @@ $('#iraqChoice').onclick=()=>{countryScreen.classList.add('hidden');gameScreen.c
 
 // واجهة إدارة الدولة والتحكم بالخريطة
 const mapSvg=$('#iraqMap'),mapViewport=$('#mapViewport');
-let mapView={x:0,y:0,w:900,h:855},drag=null,zoomLevel=1;
+let mapView={x:0,y:0,w:900,h:855},zoomLevel=1;
+const activePointers=new Map();let mapGesture=null;
 function applyMapView(){mapSvg.setAttribute('viewBox',`${mapView.x} ${mapView.y} ${mapView.w} ${mapView.h}`)}
 function zoomMap(factor,cx=mapView.x+mapView.w/2,cy=mapView.y+mapView.h/2){const nw=Math.max(260,Math.min(1400,mapView.w/factor)),nh=nw*855/900;const rx=(cx-mapView.x)/mapView.w,ry=(cy-mapView.y)/mapView.h;mapView.x=cx-rx*nw;mapView.y=cy-ry*nh;mapView.w=nw;mapView.h=nh;zoomLevel=900/nw;applyMapView()}
 function resetMap(){mapView={x:0,y:0,w:900,h:855};zoomLevel=1;applyMapView()}
 $('#zoomIn').onclick=()=>zoomMap(1.25);$('#zoomOut').onclick=()=>zoomMap(.8);$('#zoomReset').onclick=resetMap;
 mapViewport.addEventListener('wheel',e=>{e.preventDefault();const r=mapSvg.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*mapView.w+mapView.x,y=(e.clientY-r.top)/r.height*mapView.h+mapView.y;zoomMap(e.deltaY<0?1.15:.87,x,y)},{passive:false});
-mapViewport.addEventListener('pointerdown',e=>{if(e.target.closest('.zoom-tools'))return;drag={id:e.pointerId,x:e.clientX,y:e.clientY,viewX:mapView.x,viewY:mapView.y,moved:false};mapViewport.setPointerCapture(e.pointerId);mapViewport.classList.add('dragging')});
-mapViewport.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;const r=mapSvg.getBoundingClientRect(),dx=(e.clientX-drag.x)/r.width*mapView.w,dy=(e.clientY-drag.y)/r.height*mapView.h;if(Math.abs(dx)+Math.abs(dy)>2)drag.moved=true;if(drag.moved){mapView.x=drag.viewX-dx;mapView.y=drag.viewY-dy;applyMapView()}});
-function endDrag(){drag=null;mapViewport.classList.remove('dragging')};mapViewport.addEventListener('pointerup',endDrag);mapViewport.addEventListener('pointercancel',endDrag);
+function pointerDistance(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function beginMapGesture(){
+ const pts=[...activePointers.values()];
+ if(pts.length>=2){const a=pts[0],b=pts[1],r=mapSvg.getBoundingClientRect(),center={x:(a.x+b.x)/2,y:(a.y+b.y)/2};mapGesture={type:'pinch',startDistance:Math.max(1,pointerDistance(a,b)),startCenter:center,view:{...mapView},worldX:mapView.x+(center.x-r.left)/r.width*mapView.w,worldY:mapView.y+(center.y-r.top)/r.height*mapView.h};mapViewport.classList.add('dragging')}
+ else if(pts.length===1){const a=pts[0];mapGesture={type:'pan',start:{x:a.x,y:a.y},view:{...mapView},moved:false};mapViewport.classList.remove('dragging')}
+ else{mapGesture=null;mapViewport.classList.remove('dragging')}
+}
+mapViewport.addEventListener('pointerdown',e=>{if(e.target.closest('.zoom-tools'))return;e.preventDefault();activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});try{mapViewport.setPointerCapture(e.pointerId)}catch(_){}beginMapGesture()});
+mapViewport.addEventListener('pointermove',e=>{
+ if(!activePointers.has(e.pointerId))return;activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(!mapGesture)return;
+ const r=mapSvg.getBoundingClientRect(),pts=[...activePointers.values()];
+ if(pts.length>=2&&mapGesture.type==='pinch'){
+  const a=pts[0],b=pts[1],center={x:(a.x+b.x)/2,y:(a.y+b.y)/2},distance=Math.max(1,pointerDistance(a,b)),base=mapGesture.view;
+  const nw=Math.max(260,Math.min(1400,base.w*mapGesture.startDistance/distance)),nh=nw*855/900;
+  mapView.w=nw;mapView.h=nh;mapView.x=mapGesture.worldX-(center.x-r.left)/r.width*nw;mapView.y=mapGesture.worldY-(center.y-r.top)/r.height*nh;zoomLevel=900/nw;applyMapView();mapViewport.classList.add('dragging');
+ }else if(pts.length===1&&mapGesture.type==='pan'){
+  const a=pts[0],dx=(a.x-mapGesture.start.x)/r.width*mapGesture.view.w,dy=(a.y-mapGesture.start.y)/r.height*mapGesture.view.h;
+  if(Math.abs(dx)+Math.abs(dy)>2)mapGesture.moved=true;
+  if(mapGesture.moved){mapView.x=mapGesture.view.x-dx;mapView.y=mapGesture.view.y-dy;applyMapView();mapViewport.classList.add('dragging')}
+ }
+});
+function endMapPointer(e){activePointers.delete(e.pointerId);beginMapGesture()}
+mapViewport.addEventListener('pointerup',endMapPointer);mapViewport.addEventListener('pointercancel',endMapPointer);mapViewport.addEventListener('lostpointercapture',endMapPointer);
 // منع سحب الخريطة من تعطيل اختيار عناصرها عند النقر دون تحريك
 const oldProvinceHandlerNote='';
 
@@ -51,7 +72,7 @@ function showModal(title,html){modalTitle.textContent=title;modalContent.innerHT
 function closeModal(){modal.classList.add('hidden')}
 $('#closeModal').onclick=closeModal;modal.addEventListener('click',e=>{if(e.target===modal)closeModal()});
 const economy={
- money:250000,oil:1250,gold:320,electronics:85,iron:760,rubber:240,food:8400,supplies:1900,
+ money:250000,oil:1250,gold:320,electronics:85,iron:760,rubber:240,food:8400,supplies:1900,nuclearWarheads:0,
  population:'45.2 مليون',income:18500,expenses:12300,
  flow:{
   money:{production:18500,consumption:12300,unit:'دولار'},

@@ -64,3 +64,8 @@
 .research-progress-wrap small{display:block;margin-top:6px;color:#a9bbc5;font-size:10px}
 .research-running{border-color:#4c9fcb}
 @media(max-width:520px){.research-layout{grid-template-columns:1fr}.research-side{position:static}.research-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.unit-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.unit-photo{height:105px}.unit-detail-head{grid-template-columns:105px minmax(0,1fr)}}
+
+/* v0.6: touch-first pinch zoom and nuclear status tile */
+.map-wrap,.map-wrap svg{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.resourcebar .nuclear-resource{border-color:#7b6541;background:linear-gradient(145deg,#2b261c,#17202a)}
+.resourcebar .nuclear-resource b{color:#f0d28f}
