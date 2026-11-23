@@ -26,32 +26,65 @@ function getName(f){let p=f.properties||{};return p.shapeName||p.NAME_1||p.name_
 function status(t){$('mapStatus').textContent=t}
 function toast(t){$('toast').textContent=t;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2800)}
 function paintCountries(){baseGroup.querySelectorAll('path').forEach(p=>{let active=selectedCountry&&p.dataset.id===selectedCountry.id;p.setAttribute('fill',active?'#b99a62':'#18283b');p.setAttribute('fill-opacity',active?'1':'.78');p.setAttribute('stroke',active?'#e6c98f':'#53657a');p.setAttribute('stroke-width',active?'2.8':'1.2')})}
-function chooseRegion(f){selectedRegion=f;adminPaths.forEach(({feature,path})=>{let on=feature===f;path.setAttribute('fill',on?'#e2bd75':'#76684f');path.setAttribute('fill-opacity',on?'.95':'.4');path.setAttribute('stroke',on?'#fff0c5':'#d0b47c');path.setAttribute('stroke-width',on?'3':'1.4')});let n=getName(f);$('selectedRegionName').textContent=n;$('selectedRegionHint').textContent='تم تحديد المنطقة';document.querySelectorAll('.region-btn').forEach(b=>b.classList.toggle('active',b.textContent===n));status('الدولة: '+selectedCountry.ar+' · المنطقة: '+n)}
-function renderRegions(features){adminGroup.innerHTML='';adminPaths=[];adminFeatures=features;let list=$('regionList');list.innerHTML='';features.forEach(f=>{if(!f.geometry)return;let path=addSvg('path',{d:geometryPath(f.geometry),fill:'#76684f','fill-opacity':'.4',stroke:'#d0b47c','stroke-width':'1.4','vector-effect':'non-scaling-stroke',class:'admin-shape'},adminGroup);path.addEventListener('click',()=>chooseRegion(f));adminPaths.push({feature:f,path});let b=document.createElement('button');b.className='region-btn';b.textContent=getName(f);b.onclick=()=>{chooseRegion(f);let bb=boundsForGeometry(f.geometry);fit(bb,80)};list.appendChild(b)});$('regionCount').textContent=features.length+' منطقة';if(features.length!==selectedCountry.count){$('regionCount').classList.add('count-warning');toast('المصدر يعرض '+features.length+' منطقة، والمتوقع '+selectedCountry.count)}else $('regionCount').classList.remove('count-warning')}
-function loadRegions(c){
+function updateRegionList(c){
  $('regionTitle').textContent='مناطق '+c.ar;
  $('regionCount').textContent='—';
  $('regionList').innerHTML='';
- adminGroup.innerHTML='';adminPaths=[];adminFeatures=[];selectedRegion=null;
- $('selectedRegionName').textContent='لم تختر منطقة';$('selectedRegionHint').textContent='';
- if(!adminGeo||!Array.isArray(adminGeo.features)){
-   $('regionList').innerHTML='<div class="loading-regions error">بيانات التقسيم الإداري غير موجودة في هذه النسخة.</div>';return;
- }
  const features=adminGeo.features.filter(f=>f.properties&&f.properties.shapeGroup===c.id&&f.geometry);
- if(!features.length){
-   $('regionList').innerHTML='<div class="loading-regions error">لا توجد حدود إدارية لهذه الدولة في الملف المرفق.</div>';return;
- }
- renderRegions(features);
+ $('regionCount').textContent=features.length+' منطقة';
+ if(!features.length){$('regionList').innerHTML='<div class="loading-regions error">لا توجد حدود إدارية لهذه الدولة في الملف المرفق.</div>';return;}
+ features.forEach(f=>{let b=document.createElement('button');b.className='region-btn';b.textContent=getName(f);b.onclick=()=>chooseRegion(f);$('regionList').appendChild(b)});
  if(c.id==='OMN'){
-   const note=document.createElement('div');
-   note.className='loading-regions';
+   const note=document.createElement('div');note.className='loading-regions';
    note.textContent='تنبيه: الملف المرسل يحتوي على 7 وحدات إدارية لعُمان فقط، وليس 11. لم تتم إضافة مناطق غير موجودة في المصدر.';
    $('regionList').prepend(note);
  }
+ if(features.length!==c.count){$('regionCount').classList.add('count-warning')}else $('regionCount').classList.remove('count-warning');
 }
-function chooseCountry(id){let c=countries.find(x=>x.id===id);if(!c)return;selectedCountry=c;$('selectedName').textContent=c.ar;$('selectedHint').textContent='تم تحديد الدولة';$('confirmCountry').disabled=false;document.querySelectorAll('.country-btn').forEach(b=>b.classList.toggle('active',b.dataset.country===id));paintCountries();let f=geo.features.find(f=>f.properties.iso_a3===id);if(f)fit(boundsForGeometry(f.geometry),60);status('تم تحديد '+c.ar);loadRegions(c)}
+function paintAdminRegions(){
+ adminPaths.forEach(({feature,path})=>{
+   const active=selectedRegion===feature;
+   const countryActive=selectedCountry&&feature.properties.shapeGroup===selectedCountry.id;
+   path.setAttribute('fill',active?'#e2bd75':'#76684f');
+   path.setAttribute('fill-opacity',active?'.32':(countryActive?'.055':'.025'));
+   path.setAttribute('stroke',active?'#fff0c5':'#d0b47c');
+   path.setAttribute('stroke-width',active?'2.6':'1.8');
+   path.setAttribute('stroke-opacity',active?'1':'.92');
+ });
+}
+function chooseRegion(f){
+ const c=countries.find(x=>x.id===f.properties.shapeGroup);
+ if(c&&selectedCountry?.id!==c.id)chooseCountry(c.id,false);
+ selectedRegion=f;paintAdminRegions();
+ let n=getName(f);$('selectedRegionName').textContent=n;$('selectedRegionHint').textContent='تم تحديد المنطقة';
+ document.querySelectorAll('.region-btn').forEach(b=>b.classList.toggle('active',b.textContent===n));
+ status('الدولة: '+(c?c.ar:selectedCountry?.ar||'')+' · المنطقة: '+n);
+}
+function renderAllAdminRegions(){
+ adminGroup.innerHTML='';adminPaths=[];
+ if(!adminGeo||!Array.isArray(adminGeo.features))return;
+ const allowed=new Set(countries.map(c=>c.id));
+ adminGeo.features.forEach(f=>{
+   if(!f.geometry||!f.properties||!allowed.has(f.properties.shapeGroup))return;
+   const path=addSvg('path',{d:geometryPath(f.geometry),fill:'#76684f','fill-opacity':'.025',stroke:'#d0b47c','stroke-width':'1.8','stroke-opacity':'.92','vector-effect':'non-scaling-stroke',class:'admin-shape'},adminGroup);
+   path.addEventListener('click',e=>{e.stopPropagation();chooseRegion(f)});
+   adminPaths.push({feature:f,path});
+ });
+}
+function chooseCountry(id,fitMap=true){
+ let c=countries.find(x=>x.id===id);if(!c)return;
+ const changed=selectedCountry?.id!==id;
+ selectedCountry=c;
+ if(changed){selectedRegion=null;$('selectedRegionName').textContent='لم تختر منطقة';$('selectedRegionHint').textContent='قرّب الخريطة ثم اضغط على منطقة';}
+ $('selectedName').textContent=c.ar;$('selectedHint').textContent='تم تحديد الدولة';$('confirmCountry').disabled=false;
+ document.querySelectorAll('.country-btn').forEach(b=>b.classList.toggle('active',b.dataset.country===id));
+ paintCountries();paintAdminRegions();
+ let f=geo.features.find(f=>f.properties.iso_a3===id);if(f&&fitMap)fit(boundsForGeometry(f.geometry),60);
+ status('تم تحديد '+c.ar);updateRegionList(c);
+}
 function init(){let map=$('map');map.innerHTML='';svg=addSvg('svg',{viewBox:'0 0 1000 650',role:'img','aria-label':'خريطة الدول الثماني','preserveAspectRatio':'xMidYMid meet'},map);addSvg('rect',{x:0,y:0,width:1000,height:650,fill:'#091321'},svg);baseGroup=addSvg('g',{},svg);adminGroup=addSvg('g',{},svg);
 geo.features.forEach(f=>{let id=f.properties.iso_a3,c=countries.find(x=>x.id===id);if(!c)return;let p=addSvg('path',{d:geometryPath(f.geometry),fill:'#18283b','fill-opacity':'.78',stroke:'#53657a','stroke-width':'1.2','vector-effect':'non-scaling-stroke',class:'country-shape','data-id':id},baseGroup);p.addEventListener('click',()=>chooseCountry(id))});
+renderAllAdminRegions();
 let all=geo.features.map(f=>boundsForGeometry(f.geometry));let b={x:Math.min(...all.map(x=>x.x)),y:Math.min(...all.map(x=>x.y)),w:Math.max(...all.map(x=>x.x+x.w))-Math.min(...all.map(x=>x.x)),h:Math.max(...all.map(x=>x.y+x.h))-Math.min(...all.map(x=>x.y))};fit(b,30);
 countries.forEach(c=>{let btn=document.createElement('button');btn.className='country-btn';btn.dataset.country=c.id;btn.innerHTML=`<span class="flag">${c.flag}</span>${c.ar}`;btn.onclick=()=>chooseCountry(c.id);$('countryList').appendChild(btn)});
 // Pointer drag and pinch zoom, plus mouse wheel zoom.
