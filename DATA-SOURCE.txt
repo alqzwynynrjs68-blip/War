@@ -1,7 +1,0 @@
-WORLD DOMINION — Geographic data attribution
-
-Administrative boundaries: geoBoundaries, CGAZ ADM1 global dataset.
-Source: https://www.geoboundaries.org/globalDownloads.html
-The source dataset is distributed under the terms stated by geoBoundaries. Review the current license and attribution requirements before redistribution or commercial release.
-
-This project contains simplified derivatives of the supplied ADM1 GeoJSON for browser performance. The supplied dataset contains 3,224 first-level administrative features. Country outlines are derived by dissolving ADM1 polygons by country code.
