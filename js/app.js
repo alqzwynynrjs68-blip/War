@@ -46,10 +46,10 @@ function paintAdminRegions(){
    const active=selectedRegion===feature;
    const countryActive=selectedCountry&&feature.properties.shapeGroup===selectedCountry.id;
    path.setAttribute('fill',active?'#e2bd75':'#76684f');
-   path.setAttribute('fill-opacity',active?'.32':(countryActive?'.055':'.025'));
-   path.setAttribute('stroke',active?'#fff0c5':'#d0b47c');
-   path.setAttribute('stroke-width',active?'2.6':'1.8');
-   path.setAttribute('stroke-opacity',active?'1':'.92');
+   path.setAttribute('fill-opacity',active?'.62':(countryActive?'.20':'.14'));
+   path.setAttribute('stroke',active?'#fff0c5':'#e0c795');
+   path.setAttribute('stroke-width',active?'2.8':'1.55');
+   path.setAttribute('stroke-opacity',active?'1':'.98');
  });
 }
 function chooseRegion(f){
@@ -66,7 +66,7 @@ function renderAllAdminRegions(){
  const allowed=new Set(countries.map(c=>c.id));
  adminGeo.features.forEach(f=>{
    if(!f.geometry||!f.properties||!allowed.has(f.properties.shapeGroup))return;
-   const path=addSvg('path',{d:geometryPath(f.geometry),fill:'#76684f','fill-opacity':'.025',stroke:'#d0b47c','stroke-width':'1.8','stroke-opacity':'.92','vector-effect':'non-scaling-stroke',class:'admin-shape'},adminGroup);
+   const path=addSvg('path',{d:geometryPath(f.geometry),fill:'#9b8968','fill-opacity':'.14',stroke:'#e0c795','stroke-width':'1.55','stroke-opacity':'.98','vector-effect':'non-scaling-stroke',class:'admin-shape'},adminGroup);
    path.addEventListener('click',e=>{e.stopPropagation();chooseRegion(f)});
    adminPaths.push({feature:f,path});
  });
