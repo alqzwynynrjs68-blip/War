@@ -13,25 +13,24 @@ const $=id=>document.getElementById(id);
 const NS='http://www.w3.org/2000/svg';
 const geo=window.WD_COUNTRIES;
 const adminGeo=window.WD_ADMIN_REGIONS;
-let svg,baseGroup,adminGroup,countryBorderGroup,view={x:0,y:0,w:1000,h:650},selectedCountry=null,selectedRegion=null,adminFeatures=[],adminPaths=[],countryBorderPaths=[];
+let svg,baseGroup,adminGroup,countryBorderGroup,view={x:0,y:0,w:1000,h:650},selectedCountry=null,selectedRegion=null,adminFeatures=[],adminPaths=[],countryBorderPaths=[],overviewViewWidth=222;
 const project=([lon,lat])=>[(lon+180)/360*1000,(90-lat)/180*650];
 function ringsToPath(coords){return coords.map(r=>r.map((pt,i)=>{const [x,y]=project(pt);return (i?'L':'M')+x.toFixed(2)+','+y.toFixed(2)}).join(' ')+' Z').join(' ')}
 function geometryPath(g){if(!g)return '';if(g.type==='Polygon')return ringsToPath(g.coordinates);if(g.type==='MultiPolygon')return g.coordinates.map(ringsToPath).join(' ');return ''}
 function addSvg(tag,attrs,parent){const e=document.createElementNS(NS,tag);Object.entries(attrs||{}).forEach(([k,v])=>e.setAttribute(k,v));parent.appendChild(e);return e}
 function updateView(){
  svg.setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`);
- // Country borders are always visible. Province boundaries are hidden on the
- // full-region overview, fade in during zoom, and become fully visible up close.
- // The initial Gulf overview is about 222 map units wide, so the hide threshold
- // is intentionally below that value.
- const hideAt=205;       // view wider than this: province boundaries are hidden
- const fullAt=170;       // view this wide or closer: province boundaries are fully visible
+ // Calibrate province visibility against the actual full-Gulf overview width.
+ // At the overview (or farther out) province borders are fully hidden.
+ // They fade in only after the camera zooms meaningfully into the map.
+ const hideAt=overviewViewWidth*0.985;
+ const fullAt=overviewViewWidth*0.70;
  const t=Math.max(0,Math.min(1,(hideAt-view.w)/(hideAt-fullAt)));
  if(adminGroup){
    adminGroup.style.opacity=String(t);
-   adminGroup.style.visibility=t<=0?'hidden':'visible';
-   adminGroup.style.display=t<=0?'none':'inline';
-   adminGroup.style.pointerEvents=t>=0.35?'auto':'none';
+   adminGroup.style.visibility=t<0.015?'hidden':'visible';
+   adminGroup.style.display=t<0.015?'none':'inline';
+   adminGroup.style.pointerEvents=t>=0.45?'auto':'none';
  }
 }
 function boundsForGeometry(g){let pts=[];const scan=x=>{if(typeof x[0]==='number')pts.push(project(x));else x.forEach(scan)};scan(g.coordinates);let xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);return {x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)}}
@@ -51,7 +50,7 @@ function paintCountries(){
  countryBorderPaths.forEach(({id,path})=>{
    const active=selectedCountry&&id===selectedCountry.id;
    path.setAttribute('stroke',active?'#e6c98f':'#8192a5');
-   path.setAttribute('stroke-width',active?'3.6':'2.9');
+   path.setAttribute('stroke-width',active?'4.6':'3.8');
    path.setAttribute('stroke-opacity',active?'1':'.88');
  });
 }
@@ -77,7 +76,7 @@ function paintAdminRegions(){
    path.setAttribute('fill',active?'#e2bd75':'#76684f');
    path.setAttribute('fill-opacity',active?'.40':(countryActive?'.055':'.025'));
    path.setAttribute('stroke',active?'#fff0c5':'#e0c795');
-   path.setAttribute('stroke-width',active?'1.15':'.62');
+   path.setAttribute('stroke-width',active?'1.15':'.58');
    path.setAttribute('stroke-opacity',active?'1':'.88');
  });
 }
@@ -95,7 +94,7 @@ function renderAllAdminRegions(){
  const allowed=new Set(countries.map(c=>c.id));
  adminGeo.features.forEach(f=>{
    if(!f.geometry||!f.properties||!allowed.has(f.properties.shapeGroup))return;
-   const path=addSvg('path',{d:geometryPath(f.geometry),fill:'#9b8968','fill-opacity':'.14',stroke:'#e0c795','stroke-width':'.62','stroke-opacity':'.98','vector-effect':'non-scaling-stroke',class:'admin-shape'},adminGroup);
+   const path=addSvg('path',{d:geometryPath(f.geometry),fill:'#9b8968','fill-opacity':'.14',stroke:'#e0c795','stroke-width':'.58','stroke-opacity':'.98','vector-effect':'non-scaling-stroke',class:'admin-shape'},adminGroup);
    path.addEventListener('click',e=>{e.stopPropagation();chooseRegion(f)});
    adminPaths.push({feature:f,path});
  });
@@ -119,10 +118,10 @@ renderAllAdminRegions();
  geo.features.forEach(f=>{
    const id=f.properties.iso_a3;
    if(!countries.some(c=>c.id===id))return;
-   const path=addSvg('path',{d:geometryPath(f.geometry),fill:'none',stroke:'#8192a5','stroke-width':'2.9','stroke-opacity':'.98','vector-effect':'non-scaling-stroke'},countryBorderGroup);
+   const path=addSvg('path',{d:geometryPath(f.geometry),fill:'none',stroke:'#8192a5','stroke-width':'3.8','stroke-opacity':'.98','vector-effect':'non-scaling-stroke'},countryBorderGroup);
    countryBorderPaths.push({id,path});
  });
- let all=geo.features.map(f=>boundsForGeometry(f.geometry));let b={x:Math.min(...all.map(x=>x.x)),y:Math.min(...all.map(x=>x.y)),w:Math.max(...all.map(x=>x.x+x.w))-Math.min(...all.map(x=>x.x)),h:Math.max(...all.map(x=>x.y+x.h))-Math.min(...all.map(x=>x.y))};fit(b,30);paintCountries();paintAdminRegions();updateView();
+ let all=geo.features.map(f=>boundsForGeometry(f.geometry));let b={x:Math.min(...all.map(x=>x.x)),y:Math.min(...all.map(x=>x.y)),w:Math.max(...all.map(x=>x.x+x.w))-Math.min(...all.map(x=>x.x)),h:Math.max(...all.map(x=>x.y+x.h))-Math.min(...all.map(x=>x.y))};fit(b,30);overviewViewWidth=view.w;paintCountries();paintAdminRegions();updateView();
 countries.forEach(c=>{let btn=document.createElement('button');btn.className='country-btn';btn.dataset.country=c.id;btn.innerHTML=`<span class="flag">${c.flag}</span>${c.ar}`;btn.onclick=()=>chooseCountry(c.id);$('countryList').appendChild(btn)});
 // Pointer drag and pinch zoom, plus mouse wheel zoom.
 let pts=new Map(),drag=null,lastDist=0;const toSvg=e=>{let r=svg.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*view.w+view.x,y:(e.clientY-r.top)/r.height*view.h+view.y}};
