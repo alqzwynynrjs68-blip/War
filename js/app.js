@@ -1,17 +1,18 @@
-/* WORLD DOMINION - standalone SVG map; no Leaflet or fetch needed for the base map */
+/* WORLD DOMINION - embedded country and ADM1 boundaries; no network fetch required */
 const countries = [
- {id:'IRQ',en:'Iraq',ar:'العراق',flag:'🇮🇶',count:18,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/IRQ/ADM1/geoBoundaries-IRQ-ADM1.geojson'},
- {id:'SAU',en:'Saudi Arabia',ar:'السعودية',flag:'🇸🇦',count:13,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/SAU/ADM1/geoBoundaries-SAU-ADM1.geojson'},
- {id:'IRN',en:'Iran',ar:'إيران',flag:'🇮🇷',count:31,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/IRN/ADM1/geoBoundaries-IRN-ADM1.geojson'},
- {id:'KWT',en:'Kuwait',ar:'الكويت',flag:'🇰🇼',count:6,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/KWT/ADM1/geoBoundaries-KWT-ADM1.geojson'},
- {id:'QAT',en:'Qatar',ar:'قطر',flag:'🇶🇦',count:8,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/QAT/ADM1/geoBoundaries-QAT-ADM1.geojson'},
- {id:'BHR',en:'Bahrain',ar:'البحرين',flag:'🇧🇭',count:4,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/BHR/ADM1/geoBoundaries-BHR-ADM1.geojson'},
- {id:'ARE',en:'United Arab Emirates',ar:'الإمارات',flag:'🇦🇪',count:7,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/ARE/ADM1/geoBoundaries-ARE-ADM1.geojson'},
- {id:'OMN',en:'Oman',ar:'عُمان',flag:'🇴🇲',count:11,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/OMN/ADM1/geoBoundaries-OMN-ADM1.geojson'}
+ {id:'IRQ',en:'Iraq',ar:'العراق',flag:'🇮🇶',count:18},
+ {id:'SAU',en:'Saudi Arabia',ar:'السعودية',flag:'🇸🇦',count:13},
+ {id:'IRN',en:'Iran',ar:'إيران',flag:'🇮🇷',count:31},
+ {id:'KWT',en:'Kuwait',ar:'الكويت',flag:'🇰🇼',count:6},
+ {id:'QAT',en:'Qatar',ar:'قطر',flag:'🇶🇦',count:8},
+ {id:'BHR',en:'Bahrain',ar:'البحرين',flag:'🇧🇭',count:4},
+ {id:'ARE',en:'United Arab Emirates',ar:'الإمارات',flag:'🇦🇪',count:7},
+ {id:'OMN',en:'Oman',ar:'عُمان',flag:'🇴🇲',count:7}
 ];
 const $=id=>document.getElementById(id);
 const NS='http://www.w3.org/2000/svg';
 const geo=window.WD_COUNTRIES;
+const adminGeo=window.WD_ADMIN_REGIONS;
 let svg,baseGroup,adminGroup,view={x:0,y:0,w:1000,h:650},selectedCountry=null,selectedRegion=null,adminFeatures=[],adminPaths=[];
 const project=([lon,lat])=>[(lon+180)/360*1000,(90-lat)/180*650];
 function ringsToPath(coords){return coords.map(r=>r.map((pt,i)=>{const [x,y]=project(pt);return (i?'L':'M')+x.toFixed(2)+','+y.toFixed(2)}).join(' ')+' Z').join(' ')}
@@ -19,7 +20,7 @@ function geometryPath(g){if(!g)return '';if(g.type==='Polygon')return ringsToPat
 function addSvg(tag,attrs,parent){const e=document.createElementNS(NS,tag);Object.entries(attrs||{}).forEach(([k,v])=>e.setAttribute(k,v));parent.appendChild(e);return e}
 function updateView(){svg.setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`)}
 function boundsForGeometry(g){let pts=[];const scan=x=>{if(typeof x[0]==='number')pts.push(project(x));else x.forEach(scan)};scan(g.coordinates);let xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);return {x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)}}
-function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2){const minW=.12,maxW=3000;let nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;let rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh};updateView()}
+function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2){const minW=.015,maxW=3000;let nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;let rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh};updateView()}
 function fit(b,pad=30){let w=Math.max(30,b.w+pad*2),h=Math.max(30,b.h+pad*2),s=Math.min(1000/w,650/h);view={x:b.x-(1000-w*s)/2/s,y:b.y-(650-h*s)/2/s,w:1000/s,h:650/s};updateView()}
 function getName(f){let p=f.properties||{};return p.shapeName||p.NAME_1||p.name_local||p.name_ar||p.name_en||p.name||p.admin||p.NAME||'منطقة'}
 function status(t){$('mapStatus').textContent=t}
@@ -27,7 +28,27 @@ function toast(t){$('toast').textContent=t;$('toast').classList.add('show');setT
 function paintCountries(){baseGroup.querySelectorAll('path').forEach(p=>{let active=selectedCountry&&p.dataset.id===selectedCountry.id;p.setAttribute('fill',active?'#b99a62':'#18283b');p.setAttribute('fill-opacity',active?'1':'.78');p.setAttribute('stroke',active?'#e6c98f':'#53657a');p.setAttribute('stroke-width',active?'2.8':'1.2')})}
 function chooseRegion(f){selectedRegion=f;adminPaths.forEach(({feature,path})=>{let on=feature===f;path.setAttribute('fill',on?'#e2bd75':'#76684f');path.setAttribute('fill-opacity',on?'.95':'.4');path.setAttribute('stroke',on?'#fff0c5':'#d0b47c');path.setAttribute('stroke-width',on?'3':'1.4')});let n=getName(f);$('selectedRegionName').textContent=n;$('selectedRegionHint').textContent='تم تحديد المنطقة';document.querySelectorAll('.region-btn').forEach(b=>b.classList.toggle('active',b.textContent===n));status('الدولة: '+selectedCountry.ar+' · المنطقة: '+n)}
 function renderRegions(features){adminGroup.innerHTML='';adminPaths=[];adminFeatures=features;let list=$('regionList');list.innerHTML='';features.forEach(f=>{if(!f.geometry)return;let path=addSvg('path',{d:geometryPath(f.geometry),fill:'#76684f','fill-opacity':'.4',stroke:'#d0b47c','stroke-width':'1.4','vector-effect':'non-scaling-stroke',class:'admin-shape'},adminGroup);path.addEventListener('click',()=>chooseRegion(f));adminPaths.push({feature:f,path});let b=document.createElement('button');b.className='region-btn';b.textContent=getName(f);b.onclick=()=>{chooseRegion(f);let bb=boundsForGeometry(f.geometry);fit(bb,80)};list.appendChild(b)});$('regionCount').textContent=features.length+' منطقة';if(features.length!==selectedCountry.count){$('regionCount').classList.add('count-warning');toast('المصدر يعرض '+features.length+' منطقة، والمتوقع '+selectedCountry.count)}else $('regionCount').classList.remove('count-warning')}
-async function loadRegions(c){$('regionTitle').textContent='مناطق '+c.ar;$('regionCount').textContent='—';$('regionList').innerHTML='<div class="loading-regions">حدود المحافظات لهذه الدولة غير مرفقة حالياً بالملف.</div>';adminGroup.innerHTML='';adminPaths=[];adminFeatures=[];selectedRegion=null;$('selectedRegionName').textContent='لم تختر منطقة';$('selectedRegionHint').textContent='';if(!c.url){$('regionList').innerHTML='<div class="loading-regions error">ملف حدود المحافظات لهذه الدولة غير متوفر في هذه النسخة. لم نرسم حدوداً تخمينية.</div>';return}try{let r=await fetch(c.url);if(!r.ok)throw Error('HTTP '+r.status);let j=await r.json();if(selectedCountry?.id===c.id)renderRegions((j.features||[]).filter(f=>f.geometry));}catch(e){$('regionList').innerHTML='<div class="loading-regions error">تعذّر جلب حدود المحافظات من المصدر. الخريطة الأساسية تعمل، لكن يلزم اتصال إنترنت لتحميل هذا التقسيم.</div>';console.warn(e)}}
+function loadRegions(c){
+ $('regionTitle').textContent='مناطق '+c.ar;
+ $('regionCount').textContent='—';
+ $('regionList').innerHTML='';
+ adminGroup.innerHTML='';adminPaths=[];adminFeatures=[];selectedRegion=null;
+ $('selectedRegionName').textContent='لم تختر منطقة';$('selectedRegionHint').textContent='';
+ if(!adminGeo||!Array.isArray(adminGeo.features)){
+   $('regionList').innerHTML='<div class="loading-regions error">بيانات التقسيم الإداري غير موجودة في هذه النسخة.</div>';return;
+ }
+ const features=adminGeo.features.filter(f=>f.properties&&f.properties.shapeGroup===c.id&&f.geometry);
+ if(!features.length){
+   $('regionList').innerHTML='<div class="loading-regions error">لا توجد حدود إدارية لهذه الدولة في الملف المرفق.</div>';return;
+ }
+ renderRegions(features);
+ if(c.id==='OMN'){
+   const note=document.createElement('div');
+   note.className='loading-regions';
+   note.textContent='تنبيه: الملف المرسل يحتوي على 7 وحدات إدارية لعُمان فقط، وليس 11. لم تتم إضافة مناطق غير موجودة في المصدر.';
+   $('regionList').prepend(note);
+ }
+}
 function chooseCountry(id){let c=countries.find(x=>x.id===id);if(!c)return;selectedCountry=c;$('selectedName').textContent=c.ar;$('selectedHint').textContent='تم تحديد الدولة';$('confirmCountry').disabled=false;document.querySelectorAll('.country-btn').forEach(b=>b.classList.toggle('active',b.dataset.country===id));paintCountries();let f=geo.features.find(f=>f.properties.iso_a3===id);if(f)fit(boundsForGeometry(f.geometry),60);status('تم تحديد '+c.ar);loadRegions(c)}
 function init(){let map=$('map');map.innerHTML='';svg=addSvg('svg',{viewBox:'0 0 1000 650',role:'img','aria-label':'خريطة الدول الثماني','preserveAspectRatio':'xMidYMid meet'},map);addSvg('rect',{x:0,y:0,width:1000,height:650,fill:'#091321'},svg);baseGroup=addSvg('g',{},svg);adminGroup=addSvg('g',{},svg);
 geo.features.forEach(f=>{let id=f.properties.iso_a3,c=countries.find(x=>x.id===id);if(!c)return;let p=addSvg('path',{d:geometryPath(f.geometry),fill:'#18283b','fill-opacity':'.78',stroke:'#53657a','stroke-width':'1.2','vector-effect':'non-scaling-stroke',class:'country-shape','data-id':id},baseGroup);p.addEventListener('click',()=>chooseCountry(id))});
