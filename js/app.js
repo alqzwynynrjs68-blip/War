@@ -1,13 +1,13 @@
 /* WORLD DOMINION - standalone SVG map; no Leaflet or fetch needed for the base map */
 const countries = [
- {id:'IRQ',en:'Iraq',ar:'العراق',flag:'🇮🇶',count:18,url:null},
- {id:'SAU',en:'Saudi Arabia',ar:'السعودية',flag:'🇸🇦',count:13,url:null},
- {id:'IRN',en:'Iran',ar:'إيران',flag:'🇮🇷',count:31,url:null},
- {id:'KWT',en:'Kuwait',ar:'الكويت',flag:'🇰🇼',count:6,url:'https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/KWT/ADM1/geoBoundaries-KWT-ADM1.geojson'},
- {id:'QAT',en:'Qatar',ar:'قطر',flag:'🇶🇦',count:8,url:'https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/QAT/ADM1/geoBoundaries-QAT-ADM1.geojson'},
- {id:'BHR',en:'Bahrain',ar:'البحرين',flag:'🇧🇭',count:4,url:'https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/BHR/ADM1/geoBoundaries-BHR-ADM1.geojson'},
- {id:'ARE',en:'United Arab Emirates',ar:'الإمارات',flag:'🇦🇪',count:7,url:'https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/ARE/ADM1/geoBoundaries-ARE-ADM1.geojson'},
- {id:'OMN',en:'Oman',ar:'عُمان',flag:'🇴🇲',count:11,url:null}
+ {id:'IRQ',en:'Iraq',ar:'العراق',flag:'🇮🇶',count:18,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/IRQ/ADM1/geoBoundaries-IRQ-ADM1.geojson'},
+ {id:'SAU',en:'Saudi Arabia',ar:'السعودية',flag:'🇸🇦',count:13,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/SAU/ADM1/geoBoundaries-SAU-ADM1.geojson'},
+ {id:'IRN',en:'Iran',ar:'إيران',flag:'🇮🇷',count:31,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/IRN/ADM1/geoBoundaries-IRN-ADM1.geojson'},
+ {id:'KWT',en:'Kuwait',ar:'الكويت',flag:'🇰🇼',count:6,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/KWT/ADM1/geoBoundaries-KWT-ADM1.geojson'},
+ {id:'QAT',en:'Qatar',ar:'قطر',flag:'🇶🇦',count:8,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/QAT/ADM1/geoBoundaries-QAT-ADM1.geojson'},
+ {id:'BHR',en:'Bahrain',ar:'البحرين',flag:'🇧🇭',count:4,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/BHR/ADM1/geoBoundaries-BHR-ADM1.geojson'},
+ {id:'ARE',en:'United Arab Emirates',ar:'الإمارات',flag:'🇦🇪',count:7,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/ARE/ADM1/geoBoundaries-ARE-ADM1.geojson'},
+ {id:'OMN',en:'Oman',ar:'عُمان',flag:'🇴🇲',count:11,url:'https://raw.githubusercontent.com/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/OMN/ADM1/geoBoundaries-OMN-ADM1.geojson'}
 ];
 const $=id=>document.getElementById(id);
 const NS='http://www.w3.org/2000/svg';
@@ -19,7 +19,7 @@ function geometryPath(g){if(!g)return '';if(g.type==='Polygon')return ringsToPat
 function addSvg(tag,attrs,parent){const e=document.createElementNS(NS,tag);Object.entries(attrs||{}).forEach(([k,v])=>e.setAttribute(k,v));parent.appendChild(e);return e}
 function updateView(){svg.setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`)}
 function boundsForGeometry(g){let pts=[];const scan=x=>{if(typeof x[0]==='number')pts.push(project(x));else x.forEach(scan)};scan(g.coordinates);let xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);return {x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)}}
-function zoom(f,cx=500,cy=325){let nw=view.w/f,nh=view.h/f;let rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh};updateView()}
+function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2){const minW=.12,maxW=3000;let nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;let rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh};updateView()}
 function fit(b,pad=30){let w=Math.max(30,b.w+pad*2),h=Math.max(30,b.h+pad*2),s=Math.min(1000/w,650/h);view={x:b.x-(1000-w*s)/2/s,y:b.y-(650-h*s)/2/s,w:1000/s,h:650/s};updateView()}
 function getName(f){let p=f.properties||{};return p.shapeName||p.NAME_1||p.name_local||p.name_ar||p.name_en||p.name||p.admin||p.NAME||'منطقة'}
 function status(t){$('mapStatus').textContent=t}
@@ -36,8 +36,8 @@ countries.forEach(c=>{let btn=document.createElement('button');btn.className='co
 // Pointer drag and pinch zoom, plus mouse wheel zoom.
 let pts=new Map(),drag=null,lastDist=0;const toSvg=e=>{let r=svg.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*view.w+view.x,y:(e.clientY-r.top)/r.height*view.h+view.y}};
 svg.addEventListener('pointerdown',e=>{svg.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pts.size===1)drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y};if(pts.size===2){let a=[...pts.values()];lastDist=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);drag=null}});
-svg.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pts.size===1&&drag){let r=svg.getBoundingClientRect();view.x=drag.vx-(e.clientX-drag.x)/r.width*view.w;view.y=drag.vy-(e.clientY-drag.y)/r.height*view.h;updateView()}else if(pts.size===2){let a=[...pts.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);if(lastDist>0)zoom(d/lastDist);lastDist=d}});
+svg.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pts.size===1&&drag){let r=svg.getBoundingClientRect();view.x=drag.vx-(e.clientX-drag.x)/r.width*view.w;view.y=drag.vy-(e.clientY-drag.y)/r.height*view.h;updateView()}else if(pts.size===2){let a=[...pts.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);if(lastDist>0){let mid={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2},r=svg.getBoundingClientRect(),focus={x:(mid.x-r.left)/r.width*view.w+view.x,y:(mid.y-r.top)/r.height*view.h+view.y};zoom(d/lastDist,focus.x,focus.y)}lastDist=d}});
 const end=e=>{pts.delete(e.pointerId);if(pts.size<2)lastDist=0;if(pts.size===1){let a=[...pts.values()][0];drag={x:a.x,y:a.y,vx:view.x,vy:view.y}}else drag=null};svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);svg.addEventListener('wheel',e=>{e.preventDefault();let p=toSvg(e);zoom(e.deltaY<0?1.18:1/1.18,p.x,p.y)},{passive:false});
-$('zoomIn').onclick=()=>zoom(1.3);$('zoomOut').onclick=()=>zoom(1/1.3);$('resetView').onclick=()=>fit(b,30);$('confirmCountry').onclick=()=>{if(selectedCountry)toast('تم اختيار '+selectedCountry.ar+(selectedRegion?' — '+getName(selectedRegion):''))};
+$('zoomIn').onclick=()=>zoom(1.7);$('zoomOut').onclick=()=>zoom(1/1.7);$('resetView').onclick=()=>fit(b,30);$('confirmCountry').onclick=()=>{if(selectedCountry)toast('تم اختيار '+selectedCountry.ar+(selectedRegion?' — '+getName(selectedRegion):''))};
 }
 if(!geo||!geo.features){status('تعذّر قراءة بيانات الخريطة المضمّنة')}else init();
