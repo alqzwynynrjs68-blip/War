@@ -1,1 +1,14 @@
-WORLD DOMINION - Gulf map foundation\n\nOpen using a local web server (not file://). Example: python -m http.server 8000 then open http://localhost:8000\nRequires internet access to load Leaflet and Google Fonts from their CDNs.\nIncluded country boundaries: Iraq, Saudi Arabia, Iran, Kuwait, Qatar, Bahrain, United Arab Emirates, Oman.\nSource file supplied by user: custom.geo.json. The source contains country-level features only; it does not include governorate/province boundaries.\nThis prototype implements country selection, touch pinch zoom, drag pan, and country list selection only. No economy, armies, war, or province-level selection yet.\n
+WORLD DOMINION - Gulf Map Fixed Build
+
+ما تم إصلاحه:
+- إزالة اعتماد الخريطة الأساسية على مكتبة Leaflet الخارجية.
+- تضمين بيانات الدول الثماني داخل JavaScript محلياً، لذلك لا يحتاج عرض خريطة الدول إلى fetch أو اتصال إنترنت.
+- الخريطة الأساسية تعمل حتى عند فتح index.html مباشرة من الهاتف أو الحاسوب.
+- دعم الضغط على الدول، السحب، عجلة الماوس، والتقريب بإصبعين على الشاشات اللمسية.
+- بيانات المحافظات لم تُخترع ولم تُرسم عشوائياً. تحميل التقسيم الإداري لبعض الدول ما زال يحتاج الإنترنت ومصادر الحدود الخارجية؛ والدول التي لا يتوفر لها رابط في هذه النسخة ستظهر رسالة واضحة بدلاً من عرض حدود غير حقيقية.
+
+التشغيل:
+افتح index.html. إذا كان المتصفح يمنع بعض ميزات الهاتف، شغّله عبر خادم محلي.
+
+مهم:
+هذه نسخة إصلاح للخريطة التأسيسية واختيار الدول الثماني فقط، وليست لعبة مكتملة.

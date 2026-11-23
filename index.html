@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>WORLD DOMINION | اختيار الدولة</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -19,8 +18,13 @@
       <div class="map-foot"><span><i class="dot available"></i> دولة متاحة للاختيار</span><span id="mapStatus">لم يتم اختيار دولة بعد</span></div>
     </section>
     <aside class="side-panel">
-      <div class="side-title"><span class="eyebrow">الدول المتاحة</span><h2>منطقة الخليج</h2><p>اختر إحدى الدول الثماني لبدء إعداد عالمك.</p></div>
+      <div class="side-title"><span class="eyebrow">الدول المتاحة</span><h2>منطقة الخليج</h2><p>اختر دولة، ثم اضغط على إحدى محافظاتها أو مناطقها الإدارية.</p></div>
       <div id="countryList" class="country-list"></div>
+      <div class="region-section">
+        <div class="region-heading"><div><span class="eyebrow">التقسيم الإداري</span><h3 id="regionTitle">مناطق الدولة</h3></div><span id="regionCount" class="region-count">—</span></div>
+        <div id="regionList" class="region-list"><div class="loading-regions">اختر دولة لعرض محافظاتها ومناطقها.</div></div>
+        <div class="region-selected"><small>المنطقة المحددة</small><strong id="selectedRegionName">لم تختر منطقة</strong><span id="selectedRegionHint">قرّب الخريطة ثم اضغط على منطقة</span></div>
+      </div>
       <div class="selected-card" id="selectedCard">
         <div class="selected-icon">◎</div><div><small>الدولة المحددة</small><strong id="selectedName">لم تختر دولة</strong><span id="selectedHint">اضغط على دولة في القائمة أو الخريطة</span></div>
       </div>
@@ -31,6 +35,6 @@
   <footer>WORLD DOMINION <span>·</span> خريطة تأسيسية قابلة للتوسّع</footer>
 </div>
 <div id="toast" class="toast"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/map-data.js"></script>
 <script src="js/app.js"></script>
 </body></html>
