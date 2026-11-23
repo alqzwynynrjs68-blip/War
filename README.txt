@@ -1,18 +1,23 @@
-WORLD DOMINION - Border & Zoom Patch V3
+WORLD DOMINION - UI UPDATE
 
-الملفات داخل الحزمة:
+Modified files only:
 - index.html
+- css/styles.css
 - js/app.js
 
-طريقة التركيب:
-1) انسخ index.html إلى مجلد المشروع الرئيسي واستبدل الملف القديم.
-2) انسخ js/app.js إلى مجلد js واستبدل الملف القديم.
-3) لا تستبدل js/map-data.js أو js/admin-data.js.
-4) ارفع الملفات بعد الاستبدال إلى الاستضافة، ثم افتح الموقع وأجرِ تحديثاً كاملاً.
+Install:
+1. Extract this ZIP into your existing project folder.
+2. Replace index.html, css/styles.css, and js/app.js when prompted.
+3. Keep the existing data files unchanged:
+   - js/map-data.js
+   - js/admin-data.js
+4. Upload the updated project to your hosting and hard-refresh the browser.
 
-التعديلات:
-- تمت معايرة إخفاء حدود المحافظات نسبةً إلى عرض الخريطة الكامل الفعلي، لا إلى قيمة ثابتة.
-- عند عرض الخليج كاملاً أو التبعيد أكثر: تختفي حدود المحافظات وتبقى حدود الدول.
-- عند التقريب: تظهر حدود المحافظات تدريجياً.
-- حدود الدول 3.8px (و4.6px للدولة المحددة)، وحدود المحافظات 0.58px (و1.15px للمحافظة المحددة).
-- تم تغيير رقم إصدار app.js في index.html لمنع استخدام النسخة القديمة المخزنة.
+Changes:
+- Welcome screen with Start button.
+- Country selection limited to Iraq, Iran, and Saudi Arabia.
+- Selected country is locked during the game; Back returns to country selection.
+- Fullscreen map beneath a compact top bar; no bottom information panel.
+- Country flag at the upper-right opens a popup with country name and region count.
+- Existing eight-country map, administrative geometry, zoom/pan/pinch behavior, thick national borders, and thin zoom-dependent administrative boundaries are retained.
+- Other five countries remain visible on the map but cannot be selected as playable countries.
