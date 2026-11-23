@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>WORLD DOMINION | اختيار الدولة</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><div class="emblem">WD</div><div><strong>WORLD DOMINION</strong><small>بداية بناء إمبراطوريتك</small></div></div>
+    <div class="phase">المرحلة الأولى · اختيار الدولة</div>
+  </header>
+  <main class="layout">
+    <section class="map-panel">
+      <div class="map-heading"><div><span class="eyebrow">الخريطة السياسية</span><h1>اختر دولتك</h1><p>المس الخريطة لتحديد دولة، واستخدم إصبعين للتقريب العميق والتبعيد.</p></div><div class="map-tools"><button id="zoomIn" aria-label="تقريب">＋</button><button id="zoomOut" aria-label="تبعيد">－</button><button id="resetView">إعادة ضبط</button></div></div>
+      <div id="map" aria-label="خريطة الدول الثماني"></div>
+      <div class="map-foot"><span><i class="dot available"></i> دولة متاحة للاختيار</span><span id="mapStatus">لم يتم اختيار دولة بعد</span></div>
+    </section>
+    <aside class="side-panel">
+      <div class="side-title"><span class="eyebrow">الدول المتاحة</span><h2>منطقة الخليج</h2><p>اختر دولة، ثم اضغط على إحدى محافظاتها أو مناطقها الإدارية.</p></div>
+      <div id="countryList" class="country-list"></div>
+      <div class="region-section">
+        <div class="region-heading"><div><span class="eyebrow">التقسيم الإداري</span><h3 id="regionTitle">مناطق الدولة</h3></div><span id="regionCount" class="region-count">—</span></div>
+        <div id="regionList" class="region-list"><div class="loading-regions">اختر دولة لعرض محافظاتها ومناطقها.</div></div>
+        <div class="region-selected"><small>المنطقة المحددة</small><strong id="selectedRegionName">لم تختر منطقة</strong><span id="selectedRegionHint">قرّب الخريطة ثم اضغط على منطقة</span></div>
+      </div>
+      <div class="selected-card" id="selectedCard">
+        <div class="selected-icon">◎</div><div><small>الدولة المحددة</small><strong id="selectedName">لم تختر دولة</strong><span id="selectedHint">اضغط على دولة في القائمة أو الخريطة</span></div>
+      </div>
+      <button id="confirmCountry" class="primary" disabled>اختيار هذه الدولة <span>←</span></button>
+      <div class="notice">هذه نسخة تأسيسية للخريطة والاختيار فقط. أنظمة الاقتصاد والجيوش والحروب ستضاف في مراحل لاحقة.</div>
+    </aside>
+  </main>
+  <footer>WORLD DOMINION <span>·</span> خريطة تأسيسية قابلة للتوسّع</footer>
+</div>
+<div id="toast" class="toast"></div>
+<script src="js/map-data.js?v=20261123-2"></script>
+<script src="js/admin-data.js?v=20261123-2"></script>
+<script src="js/app.js?v=20261123-3"></script>
+</body></html>
