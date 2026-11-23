@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>WORLD DOMINION | اختيار الدولة</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><div class="emblem">WD</div><div><strong>WORLD DOMINION</strong><small>بداية بناء إمبراطوريتك</small></div></div>
+    <div class="phase">المرحلة الأولى · اختيار الدولة</div>
+  </header>
+  <main class="layout">
+    <section class="map-panel">
+      <div class="map-heading"><div><span class="eyebrow">الخريطة السياسية</span><h1>اختر دولتك</h1><p>المس الخريطة لتحديد دولة، واستخدم إصبعين للتقريب والتبعيد.</p></div><div class="map-tools"><button id="zoomIn" aria-label="تقريب">＋</button><button id="zoomOut" aria-label="تبعيد">－</button><button id="resetView">إعادة ضبط</button></div></div>
+      <div id="map" aria-label="خريطة الدول الثماني"></div>
+      <div class="map-foot"><span><i class="dot available"></i> دولة متاحة للاختيار</span><span id="mapStatus">لم يتم اختيار دولة بعد</span></div>
+    </section>
+    <aside class="side-panel">
+      <div class="side-title"><span class="eyebrow">الدول المتاحة</span><h2>منطقة الخليج</h2><p>اختر إحدى الدول الثماني لبدء إعداد عالمك.</p></div>
+      <div id="countryList" class="country-list"></div>
+      <div class="selected-card" id="selectedCard">
+        <div class="selected-icon">◎</div><div><small>الدولة المحددة</small><strong id="selectedName">لم تختر دولة</strong><span id="selectedHint">اضغط على دولة في القائمة أو الخريطة</span></div>
+      </div>
+      <button id="confirmCountry" class="primary" disabled>اختيار هذه الدولة <span>←</span></button>
+      <div class="notice">هذه نسخة تأسيسية للخريطة والاختيار فقط. أنظمة الاقتصاد والجيوش والحروب ستضاف في مراحل لاحقة.</div>
+    </aside>
+  </main>
+  <footer>WORLD DOMINION <span>·</span> خريطة تأسيسية قابلة للتوسّع</footer>
+</div>
+<div id="toast" class="toast"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/app.js"></script>
+</body></html>
