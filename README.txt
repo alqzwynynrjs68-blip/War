@@ -1,14 +1,18 @@
-WORLD DOMINION – تصحيح تحميل بيانات المحافظات
+WORLD DOMINION - All Countries ADM1 Visibility Patch
 
-انسخ الملفات مع الحفاظ على المسارات داخل مجلد المشروع الأصلي:
+Files included:
 - index.html
-- js/map-data.js
-- js/admin-data.js
 - js/app.js
 
-استبدل الملفات ذات الأسماء نفسها. لا تحذف css/styles.css من المشروع الأصلي.
+Installation:
+1. Extract this ZIP.
+2. Copy index.html to the root of your existing game project, replacing the old one.
+3. Copy js/app.js into the existing js folder, replacing the old app.js.
+4. Do NOT remove or replace js/map-data.js or js/admin-data.js. The patch uses the embedded files already present in your project.
+5. Upload/deploy the updated project, then perform a hard refresh or open a private browser tab to avoid cached JavaScript.
 
-مهم: هذه النسخة تدمج بيانات ADM1 داخل المشروع ولا تستخدم fetch أو رابطاً خارجياً لتحميل المحافظات.
-بعد النسخ، ارفع الملفات إلى نفس مجلد الموقع الذي يحتوي index.html، ثم أعد تحميل الصفحة تحميلًا كاملاً أو افتحها في نافذة خاصة لإزالة أثر النسخة القديمة المخزنة.
-
-إذا ظهرت رسالة قديمة عن جلب الحدود من المصدر، فهذا يعني أن المتصفح أو الاستضافة ما زالا يعرضان نسخة app.js قديمة أو أن الملفات نُسخت إلى مجلد مختلف.
+Changes:
+- Administrative boundaries for all eight supported countries are drawn at the same time.
+- Boundaries remain visible at the overview zoom level and while zooming in/out.
+- Selecting a country updates the side list but does not remove other countries' boundaries.
+- Selecting an administrative region also selects its country.
