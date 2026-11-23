@@ -13,19 +13,48 @@ const $=id=>document.getElementById(id);
 const NS='http://www.w3.org/2000/svg';
 const geo=window.WD_COUNTRIES;
 const adminGeo=window.WD_ADMIN_REGIONS;
-let svg,baseGroup,adminGroup,view={x:0,y:0,w:1000,h:650},selectedCountry=null,selectedRegion=null,adminFeatures=[],adminPaths=[];
+let svg,baseGroup,adminGroup,countryBorderGroup,view={x:0,y:0,w:1000,h:650},selectedCountry=null,selectedRegion=null,adminFeatures=[],adminPaths=[],countryBorderPaths=[];
 const project=([lon,lat])=>[(lon+180)/360*1000,(90-lat)/180*650];
 function ringsToPath(coords){return coords.map(r=>r.map((pt,i)=>{const [x,y]=project(pt);return (i?'L':'M')+x.toFixed(2)+','+y.toFixed(2)}).join(' ')+' Z').join(' ')}
 function geometryPath(g){if(!g)return '';if(g.type==='Polygon')return ringsToPath(g.coordinates);if(g.type==='MultiPolygon')return g.coordinates.map(ringsToPath).join(' ');return ''}
 function addSvg(tag,attrs,parent){const e=document.createElementNS(NS,tag);Object.entries(attrs||{}).forEach(([k,v])=>e.setAttribute(k,v));parent.appendChild(e);return e}
-function updateView(){svg.setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`)}
+function updateView(){
+ svg.setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`);
+ // Country borders are always visible. Province boundaries are hidden on the
+ // full-region overview, fade in during zoom, and become fully visible up close.
+ // The initial Gulf overview is about 222 map units wide, so the hide threshold
+ // is intentionally below that value.
+ const hideAt=205;       // view wider than this: province boundaries are hidden
+ const fullAt=170;       // view this wide or closer: province boundaries are fully visible
+ const t=Math.max(0,Math.min(1,(hideAt-view.w)/(hideAt-fullAt)));
+ if(adminGroup){
+   adminGroup.style.opacity=String(t);
+   adminGroup.style.visibility=t<=0?'hidden':'visible';
+   adminGroup.style.display=t<=0?'none':'inline';
+   adminGroup.style.pointerEvents=t>=0.35?'auto':'none';
+ }
+}
 function boundsForGeometry(g){let pts=[];const scan=x=>{if(typeof x[0]==='number')pts.push(project(x));else x.forEach(scan)};scan(g.coordinates);let xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);return {x:Math.min(...xs),y:Math.min(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)}}
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2){const minW=.015,maxW=3000;let nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;let rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh};updateView()}
 function fit(b,pad=30){let w=Math.max(30,b.w+pad*2),h=Math.max(30,b.h+pad*2),s=Math.min(1000/w,650/h);view={x:b.x-(1000-w*s)/2/s,y:b.y-(650-h*s)/2/s,w:1000/s,h:650/s};updateView()}
 function getName(f){let p=f.properties||{};return p.shapeName||p.NAME_1||p.name_local||p.name_ar||p.name_en||p.name||p.admin||p.NAME||'منطقة'}
 function status(t){$('mapStatus').textContent=t}
 function toast(t){$('toast').textContent=t;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2800)}
-function paintCountries(){baseGroup.querySelectorAll('path').forEach(p=>{let active=selectedCountry&&p.dataset.id===selectedCountry.id;p.setAttribute('fill',active?'#b99a62':'#18283b');p.setAttribute('fill-opacity',active?'1':'.78');p.setAttribute('stroke',active?'#e6c98f':'#53657a');p.setAttribute('stroke-width',active?'2.8':'1.2')})}
+function paintCountries(){
+ baseGroup.querySelectorAll('path').forEach(p=>{
+   let active=selectedCountry&&p.dataset.id===selectedCountry.id;
+   p.setAttribute('fill',active?'#b99a62':'#18283b');
+   p.setAttribute('fill-opacity',active?'1':'.78');
+   // Country borders are drawn in a dedicated top layer below.
+   p.setAttribute('stroke','none');
+ });
+ countryBorderPaths.forEach(({id,path})=>{
+   const active=selectedCountry&&id===selectedCountry.id;
+   path.setAttribute('stroke',active?'#e6c98f':'#8192a5');
+   path.setAttribute('stroke-width',active?'3.6':'2.9');
+   path.setAttribute('stroke-opacity',active?'1':'.88');
+ });
+}
 function updateRegionList(c){
  $('regionTitle').textContent='مناطق '+c.ar;
  $('regionCount').textContent='—';
@@ -46,10 +75,10 @@ function paintAdminRegions(){
    const active=selectedRegion===feature;
    const countryActive=selectedCountry&&feature.properties.shapeGroup===selectedCountry.id;
    path.setAttribute('fill',active?'#e2bd75':'#76684f');
-   path.setAttribute('fill-opacity',active?'.62':(countryActive?'.20':'.14'));
+   path.setAttribute('fill-opacity',active?'.40':(countryActive?'.055':'.025'));
    path.setAttribute('stroke',active?'#fff0c5':'#e0c795');
-   path.setAttribute('stroke-width',active?'2.8':'1.55');
-   path.setAttribute('stroke-opacity',active?'1':'.98');
+   path.setAttribute('stroke-width',active?'1.15':'.62');
+   path.setAttribute('stroke-opacity',active?'1':'.88');
  });
 }
 function chooseRegion(f){
@@ -66,7 +95,7 @@ function renderAllAdminRegions(){
  const allowed=new Set(countries.map(c=>c.id));
  adminGeo.features.forEach(f=>{
    if(!f.geometry||!f.properties||!allowed.has(f.properties.shapeGroup))return;
-   const path=addSvg('path',{d:geometryPath(f.geometry),fill:'#9b8968','fill-opacity':'.14',stroke:'#e0c795','stroke-width':'1.55','stroke-opacity':'.98','vector-effect':'non-scaling-stroke',class:'admin-shape'},adminGroup);
+   const path=addSvg('path',{d:geometryPath(f.geometry),fill:'#9b8968','fill-opacity':'.14',stroke:'#e0c795','stroke-width':'.62','stroke-opacity':'.98','vector-effect':'non-scaling-stroke',class:'admin-shape'},adminGroup);
    path.addEventListener('click',e=>{e.stopPropagation();chooseRegion(f)});
    adminPaths.push({feature:f,path});
  });
@@ -82,10 +111,18 @@ function chooseCountry(id,fitMap=true){
  let f=geo.features.find(f=>f.properties.iso_a3===id);if(f&&fitMap)fit(boundsForGeometry(f.geometry),60);
  status('تم تحديد '+c.ar);updateRegionList(c);
 }
-function init(){let map=$('map');map.innerHTML='';svg=addSvg('svg',{viewBox:'0 0 1000 650',role:'img','aria-label':'خريطة الدول الثماني','preserveAspectRatio':'xMidYMid meet'},map);addSvg('rect',{x:0,y:0,width:1000,height:650,fill:'#091321'},svg);baseGroup=addSvg('g',{},svg);adminGroup=addSvg('g',{},svg);
+function init(){let map=$('map');map.innerHTML='';svg=addSvg('svg',{viewBox:'0 0 1000 650',role:'img','aria-label':'خريطة الدول الثماني','preserveAspectRatio':'xMidYMid meet'},map);addSvg('rect',{x:0,y:0,width:1000,height:650,fill:'#091321'},svg);baseGroup=addSvg('g',{},svg);adminGroup=addSvg('g',{},svg);countryBorderGroup=addSvg('g',{'pointer-events':'none'},svg);
 geo.features.forEach(f=>{let id=f.properties.iso_a3,c=countries.find(x=>x.id===id);if(!c)return;let p=addSvg('path',{d:geometryPath(f.geometry),fill:'#18283b','fill-opacity':'.78',stroke:'#53657a','stroke-width':'1.2','vector-effect':'non-scaling-stroke',class:'country-shape','data-id':id},baseGroup);p.addEventListener('click',()=>chooseCountry(id))});
 renderAllAdminRegions();
-let all=geo.features.map(f=>boundsForGeometry(f.geometry));let b={x:Math.min(...all.map(x=>x.x)),y:Math.min(...all.map(x=>x.y)),w:Math.max(...all.map(x=>x.x+x.w))-Math.min(...all.map(x=>x.x)),h:Math.max(...all.map(x=>x.y+x.h))-Math.min(...all.map(x=>x.y))};fit(b,30);
+ // Draw national borders above the province layer so they stay thick and crisp.
+ countryBorderPaths=[];
+ geo.features.forEach(f=>{
+   const id=f.properties.iso_a3;
+   if(!countries.some(c=>c.id===id))return;
+   const path=addSvg('path',{d:geometryPath(f.geometry),fill:'none',stroke:'#8192a5','stroke-width':'2.9','stroke-opacity':'.98','vector-effect':'non-scaling-stroke'},countryBorderGroup);
+   countryBorderPaths.push({id,path});
+ });
+ let all=geo.features.map(f=>boundsForGeometry(f.geometry));let b={x:Math.min(...all.map(x=>x.x)),y:Math.min(...all.map(x=>x.y)),w:Math.max(...all.map(x=>x.x+x.w))-Math.min(...all.map(x=>x.x)),h:Math.max(...all.map(x=>x.y+x.h))-Math.min(...all.map(x=>x.y))};fit(b,30);paintCountries();paintAdminRegions();updateView();
 countries.forEach(c=>{let btn=document.createElement('button');btn.className='country-btn';btn.dataset.country=c.id;btn.innerHTML=`<span class="flag">${c.flag}</span>${c.ar}`;btn.onclick=()=>chooseCountry(c.id);$('countryList').appendChild(btn)});
 // Pointer drag and pinch zoom, plus mouse wheel zoom.
 let pts=new Map(),drag=null,lastDist=0;const toSvg=e=>{let r=svg.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*view.w+view.x,y:(e.clientY-r.top)/r.height*view.h+view.y}};
