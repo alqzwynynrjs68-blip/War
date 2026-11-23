@@ -1,16 +1,18 @@
-WORLD DOMINION - Fix for always-visible administrative boundaries
+WORLD DOMINION - Border hierarchy and zoom visibility (V2)
 
-This patch changes only js/app.js.
-It increases the visibility of all administrative region outlines and fills,
-including countries that are not currently selected. It does not alter or
-replace map-data.js or admin-data.js.
+This patch changes only the map rendering code and the app.js cache version.
+It does not replace or modify map-data.js or admin-data.js.
 
-Installation:
+Changes:
+- Country borders remain visible at every zoom level and are thicker (2.9px; selected country 3.6px).
+- Province/administrative borders are thinner (0.62px; selected region 1.15px).
+- Province boundaries are hidden on the full Gulf overview (view width > 205 map units).
+- They fade in as the camera zooms closer and are fully visible at 170 map units or closer.
+- The app.js URL version is increased to avoid the browser reusing a cached older script.
+
+Install:
 1. Extract this ZIP.
-2. Copy the js/app.js file into your existing project's js folder.
-3. Replace the old app.js.
-4. Keep the existing js/map-data.js and js/admin-data.js files unchanged.
-5. Hard-refresh the website / clear the browser cache after uploading.
-
-Note: The existing project still uses the administrative features contained
-in js/admin-data.js. This patch does not add invented boundaries.
+2. Replace index.html in the project root.
+3. Replace js/app.js in the project's js folder.
+4. Keep js/map-data.js and js/admin-data.js exactly as they are.
+5. Upload both replaced files to hosting and reload the page.
