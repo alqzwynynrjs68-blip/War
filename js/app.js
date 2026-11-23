@@ -17,7 +17,7 @@ const adminGeo = window.WD_ADMIN_REGIONS;
 let svg, baseGroup, adminGroup, countryBorderGroup;
 let view = {x:0,y:0,w:1000,h:650};
 let selectedCountry = null, selectedRegion = null;
-let adminPaths = [], countryBorderPaths = [], overviewViewWidth = 222, overviewBounds = null;
+let adminPaths = [], countryBorderPaths = [], cityMarkerNodes = [], cityMarkerGroup = null, overviewViewWidth = 222, overviewBounds = null;
 let toastTimer = null;
 
 function project([lon,lat]) { return [(lon+180)/360*1000,(90-lat)/180*650]; }
@@ -60,6 +60,7 @@ function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2) {
 function updateView() {
   if(!svg) return;
   svg.setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`);
+  updateCityMarkerSizes();
   // ADM1 lines are hidden at the full Gulf overview and fade in as the user zooms closer.
   const hideAt=overviewViewWidth*.985, fullAt=overviewViewWidth*.70;
   const t=Math.max(0,Math.min(1,(hideAt-view.w)/(hideAt-fullAt)));
@@ -124,6 +125,49 @@ function renderAdminRegions() {
     adminPaths.push({feature,path});
   });
 }
+// City miniatures are anchored to geographic coordinates. Their CSS-pixel size is
+// recalculated after every zoom/pan so they remain the same visible size on screen.
+const CITY_MARKERS = [
+  {name:'مدينة الكويت',country:'الكويت',lon:47.9783,lat:29.3759},
+  {name:'مسقط',country:'عُمان',lon:58.4059,lat:23.5880},
+  {name:'المنامة',country:'البحرين',lon:50.5860,lat:26.2235},
+  {name:'الدوحة',country:'قطر',lon:51.5310,lat:25.2854},
+  {name:'بغداد',country:'العراق',lon:44.3661,lat:33.3152},
+  {name:'النجف',country:'العراق',lon:44.0165,lat:32.0000},
+  {name:'البصرة',country:'العراق',lon:47.7804,lat:30.5085},
+  {name:'الرمادي',country:'العراق',lon:43.3000,lat:33.4200},
+  {name:'الموصل',country:'العراق',lon:43.1300,lat:36.3400},
+  {name:'السليمانية',country:'العراق',lon:45.4300,lat:35.5600},
+  {name:'الكوت',country:'العراق',lon:45.8200,lat:32.5100},
+  {name:'الرياض',country:'السعودية',lon:46.6753,lat:24.7136},
+  {name:'طهران',country:'إيران',lon:51.3890,lat:35.6892}
+];
+const CITY_MARKER_SCREEN_SIZE = 34;
+function renderCityMarkers() {
+  if(!cityMarkerGroup) return;
+  cityMarkerGroup.innerHTML=''; cityMarkerNodes=[];
+  CITY_MARKERS.forEach(city=>{
+    const [cx,cy]=project([city.lon,city.lat]);
+    const image=addSvg('image',{x:cx,y:cy,width:1,height:1,href:'assets/city-model.png',
+      preserveAspectRatio:'xMidYMax meet',class:'city-miniature','pointer-events':'none'},cityMarkerGroup);
+    const title=addSvg('title',{},image); title.textContent=city.name+' — '+city.country;
+    cityMarkerNodes.push({image,cx,cy});
+  });
+  updateCityMarkerSizes();
+}
+function updateCityMarkerSizes() {
+  if(!svg||!cityMarkerNodes.length) return;
+  const rect=svg.getBoundingClientRect();
+  if(!rect.width) return;
+  const size=CITY_MARKER_SCREEN_SIZE*view.w/rect.width;
+  cityMarkerNodes.forEach(({image,cx,cy})=>{
+    image.setAttribute('width',size);
+    image.setAttribute('height',size);
+    image.setAttribute('x',cx-size/2);
+    image.setAttribute('y',cy-size);
+  });
+}
+
 function renderMap() {
   const map=$('map'); map.innerHTML='';
   svg=addSvg('svg',{viewBox:'0 0 1000 650',role:'img','aria-label':'خريطة الدول الثماني','preserveAspectRatio':'xMidYMid meet'},map);
@@ -131,6 +175,7 @@ function renderMap() {
   baseGroup=addSvg('g',{},svg);
   adminGroup=addSvg('g',{},svg);
   countryBorderGroup=addSvg('g',{'pointer-events':'none'},svg);
+  cityMarkerGroup=addSvg('g',{'pointer-events':'none','aria-label':'مجسمات المدن'},svg);
   geo.features.forEach(feature=>{
     const id=feature.properties.iso_a3;
     if(!allCountries.some(c=>c.id===id)) return;
@@ -150,7 +195,9 @@ function renderMap() {
   });
   const allBounds=geo.features.filter(f=>allCountries.some(c=>c.id===f.properties.iso_a3)).map(f=>boundsForGeometry(f.geometry));
   overviewBounds=unionBounds(allBounds); fit(overviewBounds,30); overviewViewWidth=view.w;
-  paintCountries(); paintAdminRegions(); updateView();
+  paintCountries(); paintAdminRegions();
+  renderCityMarkers(); updateView();
+  window.addEventListener('resize',updateCityMarkerSizes);
 
   let pointers=new Map(),drag=null,lastDistance=0,moved=false;
   const toSvg=e=>{const r=svg.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*view.w+view.x,y:(e.clientY-r.top)/r.height*view.h+view.y};};
