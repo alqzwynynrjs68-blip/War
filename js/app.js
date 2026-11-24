@@ -41,26 +41,6 @@ let gameStartedAt = null, gameClockTimer = null, gameMinute = 0;
 let infantryResearch = {status:'available', completesAt:null};
 
 function project([lon,lat]) { return [(lon+180)/360*1000,(90-lat)/180*650]; }
-// Stylized terrain palette based on geographic position. Country geometry remains
-// the authoritative land mask; this only changes its visual surface treatment.
-function terrainColor(feature) {
-  const b=boundsForGeometry(feature.geometry);
-  const lon=(b.minX+b.maxX)/2, lat=(b.minY+b.maxY)/2;
-  if(lat>65) return '#657b78';                         // arctic tundra
-  if(lat>48) return '#526f59';                         // northern forests
-  if(lat>30 && lon>-18 && lon<58) return '#a58b5d';    // Sahara / Arabia / dry west Asia
-  if(lat>24 && lon>58 && lon<95) return '#8c805f';     // Iranian plateau / central Asia
-  if(lat>25 && lon>95 && lon<135) return '#58775c';   // east Asian uplands
-  if(lat>8 && lat<30 && lon>65 && lon<92) return '#58765a';
-  if(lat<-10 && lon>-20 && lon<52) return '#657d50';  // African tropics
-  if(lat<-10 && lon>110) return '#668052';            // Australia / islands
-  if(lat<-5 && lon>-82 && lon<-34) return '#557a50';  // South America
-  if(lat>-5 && lat<15 && lon>-80 && lon<-30) return '#4e7951';
-  if(lat>30 && lat<55 && lon>-130 && lon<-55) return '#657d59';
-  if(lat>30 && lat<55 && lon>-12 && lon<45) return '#607b59';
-  if(lat<-25) return '#8a8067';
-  return '#617b58';
-}
 function ringsToPath(coords) {
   return coords.map(r=>r.map((pt,i)=>{const [x,y]=project(pt);return (i?'L':'M')+x.toFixed(2)+','+y.toFixed(2)}).join(' ')+' Z').join(' ');
 }
@@ -386,13 +366,6 @@ function renderMap() {
   cityMarkerLayer.setAttribute('aria-label','علامات مواقع المدن');
   cityMarkerLayer.style.cssText='position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:5;';
   map.appendChild(cityMarkerLayer);
-  addSvg('defs',{},svg);
-  const terrainFilter=addSvg('filter',{id:'wdTerrainTexture',x:'-8%',y:'-8%',width:'116%',height:'116%','color-interpolation-filters':'sRGB'},svg);
-  addSvg('feTurbulence',{type:'fractalNoise',baseFrequency:'.018 .026',numOctaves:'3',seed:'17',result:'terrainNoise'},terrainFilter);
-  addSvg('feColorMatrix',{in:'terrainNoise',type:'saturate',values:'0',result:'grayNoise'},terrainFilter);
-  addSvg('feComponentTransfer',{in:'grayNoise',result:'softNoise'},terrainFilter);
-  addSvg('feFuncA',{type:'table',tableValues:'0 .16'},terrainFilter.lastChild);
-  addSvg('feBlend',{in:'SourceGraphic',in2:'softNoise',mode:'soft-light'},terrainFilter);
   addSvg('rect',{x:0,y:0,width:1000,height:650,fill:'#091321'},svg);
   baseGroup=addSvg('g',{},svg);
   adminGroup=addSvg('g',{},svg);
@@ -400,7 +373,7 @@ function renderMap() {
   geo.features.forEach(feature=>{
     const id=feature.properties.iso_a3;
     if(!allCountries.some(c=>c.id===id)) return;
-    const path=addSvg('path',{d:geometryPath(feature.geometry),fill:terrainColor(feature), 'fill-opacity':'.98',filter:'url(#wdTerrainTexture)',stroke:'none',class:'country-shape','data-id':id},baseGroup);
+    const path=addSvg('path',{d:geometryPath(feature.geometry),fill:'#18283b','fill-opacity':'.78',stroke:'none',class:'country-shape','data-id':id},baseGroup);
     path.addEventListener('click',()=>{
       if(!selectedCountry) return;
       if(id!==selectedCountry.id) showToast('لا يمكنك تغيير دولتك أثناء اللعب. استخدم زر الرجوع.');
