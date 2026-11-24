@@ -20,8 +20,9 @@ let selectedCountry = null, selectedRegion = null;
 let adminPaths = [], countryBorderPaths = [], cityMarkerNodes = [], cityMarkerLayer = null, overviewViewWidth = 222, overviewBounds = null;
 let toastTimer = null;
 let activePanel = null, diplomacyTab = 'countries', activeDiplomacyCountry = null;
-let selectedCity = null, activeDialog = null;
+let selectedCity = null, activeDialog = null, activeConversationCountry = null;
 const relations = {};
+const conversationMessages = {};
 
 function project([lon,lat]) { return [(lon+180)/360*1000,(90-lat)/180*650]; }
 function ringsToPath(coords) {
@@ -315,18 +316,25 @@ function closePanels() {
 }
 function renderDiplomacy() {
   const panel=$('mainPanel'); panel.hidden=false;
+  if(activeConversationCountry && diplomacyTab==='messages') { renderConversationThread(activeConversationCountry); return; }
   if(activeDiplomacyCountry) { renderCountryDiplomacy(activeDiplomacyCountry); return; }
   panel.innerHTML=`<div class="panel-head"><strong>الدبلوماسية</strong><button class="panel-close" data-close>×</button></div>
     <div class="panel-tabs"><button data-dtab="countries" class="${diplomacyTab==='countries'?'chosen':''}">الدول</button><button data-dtab="messages" class="${diplomacyTab==='messages'?'chosen':''}">المحادثات</button></div>
     <div class="panel-content" id="diplomacyContent"></div>`;
   panel.querySelector('[data-close]').onclick=closePanels;
-  panel.querySelectorAll('[data-dtab]').forEach(b=>b.onclick=()=>{diplomacyTab=b.dataset.dtab;renderDiplomacy();});
+  panel.querySelectorAll('[data-dtab]').forEach(b=>b.onclick=()=>{diplomacyTab=b.dataset.dtab;activeConversationCountry=null;activeDiplomacyCountry=null;renderDiplomacy();});
   const content=$('diplomacyContent');
   if(diplomacyTab==='countries') {
-    content.innerHTML=allCountries.filter(c=>c.id!==selectedCountry.id).map(c=>`<button class="country-row" data-country="${c.id}"><span class="flag">${c.flag}</span><span>${c.ar}</span><span class="row-arrow">‹</span></button>`).join('');
+    content.innerHTML=allCountries.filter(c=>c.id!==selectedCountry.id).map(c=>`
+      <button class="country-row" data-country="${c.id}">
+        <span class="flag">${c.flag}</span><span class="country-row-name">${c.ar}</span>
+        <span class="country-row-relation">${relations[c.id]||'سلام'}</span><span class="row-arrow">‹</span>
+      </button>`).join('');
     content.querySelectorAll('[data-country]').forEach(b=>b.onclick=()=>{activeDiplomacyCountry=allCountries.find(c=>c.id===b.dataset.country);renderDiplomacy();});
   } else {
-    content.innerHTML='<p class="empty-note">لا توجد محادثات حالياً</p>';
+    const chats=allCountries.filter(c=>c.id!==selectedCountry.id && (conversationMessages[c.id]||[]).length);
+    content.innerHTML=chats.length?chats.map(c=>`<button class="country-row conversation-row" data-chat-country="${c.id}"><span class="flag">${c.flag}</span><span class="country-row-name">${c.ar}</span><span class="row-arrow">‹</span></button>`).join(''):'<p class="empty-note">لا توجد محادثات حالياً</p>';
+    content.querySelectorAll('[data-chat-country]').forEach(b=>b.onclick=()=>{activeConversationCountry=allCountries.find(c=>c.id===b.dataset.chatCountry);renderDiplomacy();});
   }
 }
 function renderCountryDiplomacy(country) {
@@ -335,27 +343,75 @@ function renderCountryDiplomacy(country) {
   const provinces=adminGeo.features.filter(f=>f.properties.shapeGroup===country.id).length;
   $('mainPanel').innerHTML=`<div class="panel-head"><button class="back-small" id="diplomacyBack">‹</button><strong>${country.flag} ${country.ar}</strong><button class="panel-close" data-close>×</button></div>
   <div class="country-stats"><div><small>عدد المدن</small><b>${cities}</b></div><div><small>عدد المقاطعات</small><b>${provinces||country.count}</b></div></div>
-  <div class="relation-line"><span>العلاقة الحالية</span><b>${relation}</b><button id="relationToggle">⌄</button></div>
-  <div id="relationOptions" class="relation-options" hidden>${['حرب','سلام','تجارة','مرور عسكري'].map(r=>`<button data-rel="${r}">${r}</button>`).join('')}</div>
+  <div class="relation-line"><span>العلاقة الحالية</span><b>${relation}</b><button id="relationToggle" aria-label="تغيير العلاقة">⌄</button></div>
+  <div id="relationOptions" class="relation-options relation-options-vertical" hidden>
+    <button data-rel="سلام"><span>☮</span> السلام</button>
+    <button data-rel="حرب"><span>⚔</span> الحرب</button>
+    <button data-rel="تجارة"><span>⇄</span> التجارة</button>
+    <button data-rel="مرور عسكري"><span>➜</span> مرور عسكري</button>
+  </div>
   <div class="country-actions"><button id="locateCountry">⌖ الموقع</button><button id="openConversation">✉ المحادثة</button></div>`;
   $('diplomacyBack').onclick=()=>{activeDiplomacyCountry=null;renderDiplomacy();};
   $('mainPanel').querySelector('[data-close]').onclick=closePanels;
   $('relationToggle').onclick=()=>{$('relationOptions').hidden=!$('relationOptions').hidden;};
   $('relationOptions').querySelectorAll('[data-rel]').forEach(b=>b.onclick=()=>{relations[country.id]=b.dataset.rel;renderCountryDiplomacy(country);});
-  $('locateCountry').onclick=()=>{const f=geo.features.find(x=>x.properties.iso_a3===country.id);if(f)fit(boundsForGeometry(f.geometry),18);showToast('تم تحديد موقع '+country.ar);};
+  $('locateCountry').onclick=()=>locateDiplomacyCountry(country);
   $('openConversation').onclick=()=>openConversation(country);
 }
+function locateDiplomacyCountry(country) {
+  const f=geo.features.find(x=>x.properties.iso_a3===country.id);
+  if(!f) return;
+  fit(boundsForGeometry(f.geometry),18);
+  const shape=baseGroup && baseGroup.querySelector(`[data-id="${country.id}"]`);
+  if(shape) {
+    shape.classList.remove('map-country-pulse');
+    void shape.getBoundingClientRect();
+    shape.classList.add('map-country-pulse');
+    setTimeout(()=>shape.classList.remove('map-country-pulse'),3200);
+  }
+  showToast('تم تحديد موقع '+country.ar);
+}
 function openConversation(country) {
-  activeDialog=country;
-  $('dialogPanel').hidden=false;
-  $('dialogPanel').innerHTML=`<div class="dialog-head"><strong>محادثة مع ${country.flag} ${country.ar}</strong><button id="dialogClose">×</button></div><div id="chatMessages" class="chat-messages"></div><form id="chatForm" class="chat-form"><input id="chatInput" placeholder="اكتب رسالة..." autocomplete="off"><button>إرسال</button></form>`;
-  $('dialogClose').onclick=()=>$('dialogPanel').hidden=true;
-  $('chatForm').onsubmit=e=>{e.preventDefault();const input=$('chatInput');if(!input.value.trim())return;const m=document.createElement('div');m.className='chat-message';m.textContent=input.value.trim();$('chatMessages').appendChild(m);input.value='';};
+  activeDialog=null; activeConversationCountry=country; activeDiplomacyCountry=null;
+  activePanel='diplomacy'; diplomacyTab='messages';
+  $('dialogPanel').hidden=true; $('selectionPanel').hidden=true; $('bottomNav').hidden=false;
+  $('mainPanel').hidden=false;
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.panel==='diplomacy'));
+  renderDiplomacy();
+}
+function renderConversationThread(country) {
+  const messages=conversationMessages[country.id]||[];
+  $('mainPanel').innerHTML=`<div class="panel-head"><button class="back-small" id="chatBack">‹</button><strong>محادثة ${country.flag} ${country.ar}</strong><button class="panel-close" data-close>×</button></div>
+    <div id="chatMessages" class="chat-messages thread-messages">${messages.map(m=>`<div class="chat-message">${escapeChatText(m)}</div>`).join('')}</div>
+    <form id="chatForm" class="chat-form"><input id="chatInput" placeholder="اكتب رسالة..." autocomplete="off"><button>إرسال</button></form>`;
+  $('chatBack').onclick=()=>{activeConversationCountry=null;renderDiplomacy();};
+  $('mainPanel').querySelector('[data-close]').onclick=closePanels;
+  $('chatForm').onsubmit=e=>{
+    e.preventDefault(); const input=$('chatInput'), value=input.value.trim(); if(!value)return;
+    if(!conversationMessages[country.id])conversationMessages[country.id]=[];
+    conversationMessages[country.id].push(value); renderConversationThread(country);
+    $('chatMessages').scrollTop=$('chatMessages').scrollHeight;
+    $('chatInput').focus();
+  };
+  $('chatMessages').scrollTop=$('chatMessages').scrollHeight;
+}
+function escapeChatText(value) {
+  return String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
 function renderResearch() {
-  $('mainPanel').innerHTML=`<div class="panel-head"><strong>الأبحاث</strong><button class="panel-close" data-close>×</button></div><div class="panel-content"><button class="research-choice" id="infantryChoice"><span>🪖</span><b>المشاة</b></button></div>`;
+  $('mainPanel').innerHTML=`<div class="panel-head"><strong>الأبحاث</strong><button class="panel-close" data-close>×</button></div>
+    <div class="panel-content research-list">
+      <button class="research-choice research-choice-banner" id="infantryChoice">
+        <span class="research-art" aria-hidden="true"><span class="research-art-glow"></span><span class="research-art-soldier">🪖</span></span>
+        <span class="research-copy"><span class="research-icon">♜</span><b>المشاة</b><small>قوات برية أساسية للاستيلاء على الأراضي والدفاع عن المدن</small></span>
+      </button>
+    </div>`;
   $('mainPanel').querySelector('[data-close]').onclick=closePanels;
-  $('infantryChoice').onclick=()=>{$('dialogPanel').hidden=false;$('dialogPanel').innerHTML=`<div class="dialog-head"><strong>🪖 المشاة</strong><button id="dialogClose">×</button></div><div class="infantry-card"><div class="infantry-figure">🪖</div><strong>جندي مشاة</strong></div>`;$('dialogClose').onclick=()=>$('dialogPanel').hidden=true;};
+  $('infantryChoice').onclick=()=>{
+    $('dialogPanel').hidden=false;
+    $('dialogPanel').innerHTML=`<div class="dialog-head"><strong>🪖 المشاة</strong><button id="dialogClose">×</button></div><div class="infantry-card"><div class="infantry-figure">🪖</div><strong>جندي مشاة</strong><p>وحدة برية أساسية للسيطرة على الأراضي والدفاع عنها</p></div>`;
+    $('dialogClose').onclick=()=>$('dialogPanel').hidden=true;
+  };
 }
 function selectCity(city) {
   if(!selectedCountry || city.country!==selectedCountry.ar) {showToast('هذه المدينة لا تتبع دولتك الحالية');return;}
