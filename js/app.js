@@ -14,7 +14,9 @@ const $ = id => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
 const geo = window.WD_COUNTRIES;
 const adminGeo = window.WD_ADMIN_REGIONS;
+const regionData = window.WD_REGION_DATA;
 let svg, baseGroup, adminGroup, urbanPlanGroup, countryBorderGroup;
+let regionalLandGroup, regionalWaterGroup, regionalBordersGroup, regionalLabelsGroup;
 let view = {x:0,y:0,w:1000,h:650};
 let selectedCountry = null, selectedRegion = null;
 let adminPaths = [], countryBorderPaths = [], cityMarkerNodes = [], cityMarkerLayer = null, overviewViewWidth = 222, overviewBounds = null;
@@ -23,11 +25,6 @@ let activePanel = null, diplomacyTab = 'countries', activeDiplomacyCountry = nul
 let selectedCity = null, activeDialog = null, activeConversationCountry = null;
 const relations = {};
 const conversationMessages = {};
-// Campaign state is initialized only when a country is selected and the world opens.
-const STARTING_RESOURCES = Object.freeze({money:10000, iron:5000, electronics:5000});
-let resources = {...STARTING_RESOURCES};
-let gameStartedAt = null, gameClockTimer = null, gameMinute = 0;
-let infantryResearch = {status:'available', completesAt:null};
 
 function project([lon,lat]) { return [(lon+180)/360*1000,(90-lat)/180*650]; }
 function ringsToPath(coords) {
@@ -38,6 +35,10 @@ function geometryPath(g) {
   if(g.type==='Polygon') return ringsToPath(g.coordinates);
   if(g.type==='MultiPolygon') return g.coordinates.map(ringsToPath).join(' ');
   return '';
+}
+function pointsToPath(points,close=false) {
+  if(!Array.isArray(points)||points.length<2) return '';
+  return points.map((pt,i)=>{const [x,y]=project(pt);return (i?'L':'M')+x.toFixed(2)+','+y.toFixed(2)}).join(' ')+(close?' Z':'');
 }
 function addSvg(tag,attrs,parent) {
   const e=document.createElementNS(NS,tag);
@@ -101,8 +102,8 @@ function paintCountries() {
   });
   countryBorderPaths.forEach(({id,path})=>{
     const active=selectedCountry&&id===selectedCountry.id;
-    path.setAttribute('stroke','#ffffff');
-    path.setAttribute('stroke-width',active?'2.2':'1.9');
+    path.setAttribute('stroke',active?'#e6c98f':'#8192a5');
+    path.setAttribute('stroke-width',active?'4.6':'3.8');
     path.setAttribute('stroke-opacity',active?'1':'.92');
   });
 }
@@ -229,15 +230,73 @@ function updateCityMarkerSizes() {
   });
 }
 
+function renderRegionalLand() {
+  if(!regionalLandGroup||!regionData) return;
+  regionalLandGroup.innerHTML='';
+  (regionData.land||[]).forEach(ring=>{
+    const d=pointsToPath(ring,true); if(!d) return;
+    addSvg('path',{d,fill:'#18283b','fill-opacity':'.82',stroke:'none',class:'regional-land'},regionalLandGroup);
+  });
+}
+function renderRegionalWater() {
+  if(!regionalWaterGroup||!regionData) return;
+  regionalWaterGroup.innerHTML='';
+  (regionData.lakes||[]).forEach(ring=>{
+    const d=pointsToPath(ring,true); if(!d) return;
+    addSvg('path',{d,fill:'#091321',stroke:'#34799b','stroke-width':'.8','stroke-opacity':'.9','vector-effect':'non-scaling-stroke',class:'regional-lake'},regionalWaterGroup);
+  });
+  (regionData.rivers||[]).forEach(line=>{
+    const d=pointsToPath(line,false); if(!d) return;
+    addSvg('path',{d,fill:'none',stroke:'#4b9fca','stroke-width':'1.15','stroke-linecap':'round','stroke-linejoin':'round','stroke-opacity':'.92','vector-effect':'non-scaling-stroke',class:'regional-river'},regionalWaterGroup);
+  });
+}
+function renderRegionalBorders() {
+  if(!regionalBordersGroup||!regionData) return;
+  regionalBordersGroup.innerHTML='';
+  (regionData.borders||[]).forEach(line=>{
+    const d=pointsToPath(line,false); if(!d) return;
+    addSvg('path',{d,fill:'none',stroke:'#75899b','stroke-width':'.85','stroke-opacity':'.72','vector-effect':'non-scaling-stroke',class:'regional-country-border'},regionalBordersGroup);
+  });
+}
+function renderRegionalLabels() {
+  if(!regionalLabelsGroup) return;
+  regionalLabelsGroup.innerHTML='';
+  const countryLabels=[
+    ['تركيا',35.5,39.1],['سوريا',38.7,35.2],['لبنان',35.8,34.1],['الأردن',36.7,31.1],
+    ['مصر',30.8,27.0],['اليمن',47.5,15.6],['قبرص',33.2,35.0],['فلسطين',35.2,31.8],
+    ['العراق',43.7,33.4],['إيران',54.0,32.2],['السعودية',45.0,23.3],['الكويت',47.6,29.7],
+    ['قطر',51.5,25.4],['البحرين',50.2,27.1],['الإمارات',54.5,24.3],['عُمان',57.5,20.8]
+  ];
+  const waterLabels=[
+    ['البحر المتوسط',29.0,34.4],['البحر الأحمر',37.0,23.0],['بحر قزوين',52.0,40.0],
+    ['بحر العرب',61.2,17.0],['خليج عدن',48.2,13.2],['الخليج العربي',52.5,26.5],
+    ['خليج عُمان',58.8,23.2],['البحر الأسود',34.0,42.4]
+  ];
+  const riverLabels=[['دجلة',44.5,34.0],['الفرات',41.3,33.4],['النيل',31.1,25.1],['نهر الأردن',35.5,31.1]];
+  const lakeLabels=[['بحيرة وان',42.8,38.6],['بحيرة أورمية',45.5,37.6],['البحر الميت',35.5,31.5]];
+  const addLabel=(label,lon,lat,kind)=>{
+    const [x,y]=project([lon,lat]);
+    const el=addSvg('text',{x,y,'text-anchor':'middle','dominant-baseline':'middle','font-family':'Tahoma,Arial,sans-serif','font-size':kind==='country'?'2.9':'2.55','font-weight':kind==='country'?'700':'600','letter-spacing':'.02','direction':'rtl','unicode-bidi':'plaintext',fill:kind==='country'?'#e4d4b5':kind==='water'?'#6db9dd':'#86c7e3',stroke:'#091321','stroke-width':'.62','stroke-linejoin':'round','paint-order':'stroke',class:'regional-map-label'},regionalLabelsGroup);
+    el.textContent=label;
+  };
+  countryLabels.forEach(v=>addLabel(v[0],v[1],v[2],'country'));
+  waterLabels.forEach(v=>addLabel(v[0],v[1],v[2],'water'));
+  riverLabels.forEach(v=>addLabel(v[0],v[1],v[2],'river'));
+  lakeLabels.forEach(v=>addLabel(v[0],v[1],v[2],'river'));
+}
+
 function renderMap() {
   const map=$('map'); map.innerHTML='';
-  svg=addSvg('svg',{viewBox:'0 0 1000 650',role:'img','aria-label':'خريطة الدول الثماني','preserveAspectRatio':'xMidYMid meet'},map);
+  svg=addSvg('svg',{viewBox:'0 0 1000 650',role:'img','aria-label':'خريطة الشرق الأوسط الجغرافية','preserveAspectRatio':'xMidYMid meet'},map);
   cityMarkerLayer=document.createElement('div');
   cityMarkerLayer.setAttribute('aria-label','نقاط مواقع المدن');
   cityMarkerLayer.style.cssText='position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:5;';
   map.appendChild(cityMarkerLayer);
   addSvg('rect',{x:0,y:0,width:1000,height:650,fill:'#091321'},svg);
+  regionalLandGroup=addSvg('g',{},svg); renderRegionalLand();
   baseGroup=addSvg('g',{},svg);
+  regionalWaterGroup=addSvg('g',{'pointer-events':'none'},svg); renderRegionalWater();
+  regionalBordersGroup=addSvg('g',{'pointer-events':'none'},svg); renderRegionalBorders();
   adminGroup=addSvg('g',{},svg);
   countryBorderGroup=addSvg('g',{'pointer-events':'none'},svg);
   geo.features.forEach(feature=>{
@@ -256,11 +315,14 @@ function renderMap() {
   geo.features.forEach(feature=>{
     const id=feature.properties.iso_a3;
     if(!allCountries.some(c=>c.id===id)) return;
-    const path=addSvg('path',{d:geometryPath(feature.geometry),fill:'none',stroke:'#ffffff','stroke-width':'1.9','stroke-opacity':'.98','vector-effect':'non-scaling-stroke'},countryBorderGroup);
+    const path=addSvg('path',{d:geometryPath(feature.geometry),fill:'none',stroke:'#8192a5','stroke-width':'3.8','stroke-opacity':'.98','vector-effect':'non-scaling-stroke'},countryBorderGroup);
     countryBorderPaths.push({id,path});
   });
-  const allBounds=geo.features.filter(f=>allCountries.some(c=>c.id===f.properties.iso_a3)).map(f=>boundsForGeometry(f.geometry));
-  overviewBounds=unionBounds(allBounds); fit(overviewBounds,30); overviewViewWidth=view.w;
+  const [west,south,east,north]=regionData.bounds;
+  const topLeft=project([west,north]),bottomRight=project([east,south]);
+  overviewBounds={x:topLeft[0],y:topLeft[1],w:bottomRight[0]-topLeft[0],h:bottomRight[1]-topLeft[1]};
+  fit(overviewBounds,8); overviewViewWidth=view.w;
+  regionalLabelsGroup=addSvg('g',{'pointer-events':'none','aria-hidden':'true'},svg); renderRegionalLabels();
   paintCountries(); paintAdminRegions();
   renderCityMarkers(); updateView();
   window.addEventListener('resize',updateCityMarkerSizes);
@@ -295,7 +357,7 @@ function renderMap() {
   svg.addEventListener('wheel',e=>{e.preventDefault();const p=toSvg(e);zoom(e.deltaY<0?1.18:1/1.18,p.x,p.y);},{passive:false});
   $('zoomIn').onclick=()=>zoom(1.65);
   $('zoomOut').onclick=()=>zoom(1/1.65);
-  $('resetView').onclick=()=>fit(overviewBounds,30);
+  $('resetView').onclick=()=>fit(overviewBounds,8);
 }
 function updateCountryPopover() {
   $('topCountryFlag').textContent=selectedCountry.flag;
@@ -306,18 +368,16 @@ function updateCountryPopover() {
 function enterGame(countryId) {
   selectedCountry=playableCountries.find(c=>c.id===countryId);
   if(!selectedCountry) return;
-  startNewCampaignClock();
   selectedRegion=null; closePanels();
   $('welcomeScreen').hidden=true; $('countryScreen').hidden=true; $('gameScreen').hidden=false;
   $('countryPopover').hidden=true; $('countryFlagButton').setAttribute('aria-expanded','false');
   updateCountryPopover();
   if(!svg) renderMap();
-  else if(overviewBounds) fit(overviewBounds,30);
+  else if(overviewBounds) fit(overviewBounds,8);
   paintCountries(); paintAdminRegions();
   requestAnimationFrame(()=>{if(svg)updateView();});
 }
 function returnToCountrySelection() {
-  stopCampaignClock();
   selectedCountry=null; selectedRegion=null;
   $('countryPopover').hidden=true; $('countryFlagButton').setAttribute('aria-expanded','false');
   $('gameScreen').hidden=true; $('welcomeScreen').hidden=true; $('countryScreen').hidden=false;
@@ -433,77 +493,19 @@ function escapeChatText(value) {
   return String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
 function renderResearch() {
-  $('mainPanel').innerHTML=`<div class="panel-head"><strong>الأبحاث</strong><button class="panel-close" data-close>×</button></div><div class="panel-content research-list"><button class="research-choice research-choice-banner" id="infantryChoice"><span class="research-art" aria-hidden="true"><span class="research-art-glow"></span><span class="research-art-soldier">🪖</span></span><span class="research-copy"><span class="research-icon">♜</span><b>المشاة</b><small>شجرة أبحاث قوات المشاة وتطوير قدراتها</small></span></button></div>`;
+  $('mainPanel').innerHTML=`<div class="panel-head"><strong>الأبحاث</strong><button class="panel-close" data-close>×</button></div>
+    <div class="panel-content research-list">
+      <button class="research-choice research-choice-banner" id="infantryChoice">
+        <span class="research-art" aria-hidden="true"><span class="research-art-glow"></span><span class="research-art-soldier">🪖</span></span>
+        <span class="research-copy"><span class="research-icon">♜</span><b>المشاة</b><small>قوات برية أساسية للاستيلاء على الأراضي والدفاع عن المدن</small></span>
+      </button>
+    </div>`;
   $('mainPanel').querySelector('[data-close]').onclick=closePanels;
-  $('infantryChoice').onclick=renderInfantryResearch;
-}
-const INFANTRY_RESEARCHES={
- infantry:{name:'جندي المشاة',icon:'🪖',day:1,cost:{money:1000,electronics:150,iron:250},description:'جندي مشاة يستطيع الدفاع عن الأراضي ومهاجمة الأعداء واحتلال الأراضي.'},
- health:{name:'زيادة صحة الجندي',icon:'✚',day:3,cost:{money:1250,electronics:188,iron:313},description:'تطوير قدرة جندي المشاة على تحمّل الضرر والبقاء في المعركة.'},
- power:{name:'زيادة قوة الجندي',icon:'⚔️',day:3,cost:{money:1250,electronics:188,iron:313},description:'تطوير القوة القتالية لجندي المشاة وزيادة قدرته الهجومية.'}
-};
-let infantryTech={infantry:'available',health:'locked',power:'locked'},selectedInfantryTech='infantry',activeInfantryTech=null,infantryTechCompletesAt=null,infantryTechStartedAt=null;
-function currentGameDay(){return Math.floor(gameMinute/1440)+1;}
-function techIsUnlocked(key){return key==='infantry'||(currentGameDay()>=INFANTRY_RESEARCHES[key].day&&infantryTech.infantry==='completed');}
-function renderInfantryResearch(){
- const panel=$('dialogPanel'),selected=INFANTRY_RESEARCHES[selectedInfantryTech],state=infantryTech[selectedInfantryTech],cost=selected.cost,unlocked=techIsUnlocked(selectedInfantryTech),running=activeInfantryTech?INFANTRY_RESEARCHES[activeInfantryTech]:null,remaining=running?Math.max(0,infantryTechCompletesAt-gameMinute):0;
- panel.hidden=false;panel.classList.add('research-tree-screen');
- const status=state==='completed'?'مكتمل':state==='running'?'قيد البحث':!unlocked?'يفتح في اليوم '+selected.day:'متاح للبحث';
- const canStart=unlocked&&state==='available'&&!activeInfantryTech;
- panel.innerHTML=`<div class="research-tree-head"><div><small>مركز التطوير العسكري</small><strong>شجرة أبحاث المشاة</strong></div><button id="dialogClose" aria-label="إغلاق">×</button></div>
- <div class="research-top-cards">
- <section class="research-top-card active-research-card"><div class="research-card-label">البحث الجاري</div>${running?`<div class="research-running-unit"><span>${running.icon}</span><div><b>${running.name}</b><small id="researchActiveRemaining">الوقت المتبقي: ${remaining} دقيقة</small></div></div><div class="research-progress"><i id="researchActiveProgress" style="width:${Math.min(100,Math.max(0,(1-remaining)*100))}%"></i></div>`:'<div class="research-empty">لا يوجد بحث جارٍ حالياً</div>'}</section>
- <section class="research-top-card selected-research-card"><div class="research-card-label">البحث المحدد</div><div class="research-running-unit"><span>${selected.icon}</span><div><b>${selected.name}</b><small>${status}</small></div></div><div class="research-mini-costs">💵 ${cost.money.toLocaleString('en-US')}　📟 ${cost.electronics}　⚙️ ${cost.iron}</div><button id="startSelectedTech" class="start-research-button" ${canStart?'':'disabled'}>${state==='completed'?'مكتمل':state==='running'?'قيد البحث':!unlocked?'مقفل حتى اليوم '+selected.day:activeInfantryTech?'يوجد بحث جارٍ':'بحث'}</button></section></div>
- <div class="research-tree-subhead"><strong>تسلسل تطوير المشاة</strong><span>اليوم ${currentGameDay()}</span></div>
- <div class="research-tree-scroll"><div class="research-timeline">
- <div class="research-day-label">اليوم 1</div><div class="research-node-row"><button class="research-node ${selectedInfantryTech==='infantry'?'selected':''} ${infantryTech.infantry==='completed'?'completed':''}" data-tech="infantry"><span class="research-node-icon">🪖</span><b>جندي المشاة</b><small>${infantryTech.infantry==='completed'?'مكتمل':'البحث الأساسي'}</small></button></div>
- <div class="research-connector"></div><div class="research-day-label">اليوم 2</div><div class="research-day-empty">لا توجد أبحاث متاحة في هذا اليوم</div><div class="research-connector"></div>
- <div class="research-day-label">اليوم 3</div><div class="research-upgrade-branches"><button class="research-node upgrade-node ${selectedInfantryTech==='health'?'selected':''} ${infantryTech.health==='completed'?'completed':''} ${!techIsUnlocked('health')?'locked':''}" data-tech="health"><span class="research-node-icon">✚</span><b>زيادة الصحة</b><small>${infantryTech.health==='completed'?'مكتمل':techIsUnlocked('health')?'تطوير الجندي':'مقفل'}</small></button><button class="research-node upgrade-node ${selectedInfantryTech==='power'?'selected':''} ${infantryTech.power==='completed'?'completed':''} ${!techIsUnlocked('power')?'locked':''}" data-tech="power"><span class="research-node-icon">⚔️</span><b>زيادة القوة</b><small>${infantryTech.power==='completed'?'مكتمل':techIsUnlocked('power')?'تطوير الجندي':'مقفل'}</small></button></div></div></div>
- <div class="research-detail-strip"><div class="research-detail-title"><span>${selected.icon}</span><div><b>${selected.name}</b><small>${selected.description}</small></div></div><div class="research-detail-meta"><span>المتطلبات: 💵 ${cost.money.toLocaleString('en-US')}　📟 ${cost.electronics}　⚙️ ${cost.iron}</span><span>المدة: دقيقة واحدة</span></div></div>`;
- $('dialogClose').onclick=()=>{panel.hidden=true;panel.classList.remove('research-tree-screen');};
- panel.querySelectorAll('[data-tech]').forEach(btn=>btn.onclick=()=>{selectedInfantryTech=btn.dataset.tech;renderInfantryResearch();});
- $('startSelectedTech').onclick=()=>startInfantryTech(selectedInfantryTech);
-}
-function startInfantryTech(key){
- const tech=INFANTRY_RESEARCHES[key];if(!tech||!techIsUnlocked(key)||infantryTech[key]!=='available'||activeInfantryTech)return;
- const c=tech.cost;if(resources.money<c.money||resources.electronics<c.electronics||resources.iron<c.iron){showToast('الموارد غير كافية لإجراء البحث');return;}
- resources.money-=c.money;resources.electronics-=c.electronics;resources.iron-=c.iron;infantryTech[key]='running';activeInfantryTech=key;infantryTechCompletesAt=gameMinute+1;infantryTechStartedAt=Date.now();updateGameStatus();renderInfantryResearch();
-}
-function startNewCampaignClock() {
-  stopCampaignClock();
-  resources={...STARTING_RESOURCES};
-  infantryResearch={status:'available',completesAt:null};
-  infantryTech={infantry:'available',health:'locked',power:'locked'}; selectedInfantryTech='infantry'; activeInfantryTech=null; infantryTechCompletesAt=null; infantryTechStartedAt=null;
-  gameStartedAt=Date.now(); gameMinute=0;
-  updateGameStatus();
-  gameClockTimer=window.setInterval(updateCampaignClock,1000);
-}
-function stopCampaignClock() {
-  if(gameClockTimer!==null) window.clearInterval(gameClockTimer);
-  gameClockTimer=null; gameStartedAt=null;
-}
-function updateCampaignClock() {
-  if(gameStartedAt===null) return;
-  // One in-game minute passes every five real seconds (one game hour = five real minutes).
-  gameMinute=Math.floor((Date.now()-gameStartedAt)/5000);
-  if(activeInfantryTech && gameMinute>=infantryTechCompletesAt) {
-    const completed=activeInfantryTech; infantryTech[completed]='completed';
-    if(completed==='infantry'){infantryTech.health='available';infantryTech.power='available';}
-    activeInfantryTech=null; infantryTechCompletesAt=null; infantryTechStartedAt=null;
-    if(!$('dialogPanel').hidden && $('dialogPanel').classList.contains('research-tree-screen')) renderInfantryResearch();
-    showToast('اكتمل البحث: '+INFANTRY_RESEARCHES[completed].name);
-  }
-  if(activeInfantryTech){const label=$('researchActiveRemaining');const bar=$('researchActiveProgress');const progress=Math.min(100,Math.max(0,((Date.now()-infantryTechStartedAt)/5000)*100));if(label)label.textContent='مدة البحث: دقيقة واحدة';if(bar)bar.style.width=progress+'%';}
-  updateGameStatus();
-}
-function updateGameStatus() {
-  const day=Math.floor(gameMinute/1440)+1;
-  const minuteOfDay=gameMinute%1440;
-  const hours=String(Math.floor(minuteOfDay/60)).padStart(2,'0');
-  const minutes=String(minuteOfDay%60).padStart(2,'0');
-  const date=$('gameDateTime'); const money=$('moneyValue');
-  if(date) date.textContent=`يوم ${day} | ${hours}:${minutes}`;
-  if(money) money.textContent=resources.money.toLocaleString('en-US');
+  $('infantryChoice').onclick=()=>{
+    $('dialogPanel').hidden=false;
+    $('dialogPanel').innerHTML=`<div class="dialog-head"><strong>🪖 المشاة</strong><button id="dialogClose">×</button></div><div class="infantry-card"><div class="infantry-figure">🪖</div><strong>جندي مشاة</strong><p>وحدة برية أساسية للسيطرة على الأراضي والدفاع عنها</p></div>`;
+    $('dialogClose').onclick=()=>$('dialogPanel').hidden=true;
+  };
 }
 function showCityPanel(city) {
   selectedCity=city; activePanel=null;
@@ -541,7 +543,7 @@ function initInterface() {
     }
   });
 }
-if(!geo||!Array.isArray(geo.features)||!adminGeo||!Array.isArray(adminGeo.features)) {
+if(!geo||!Array.isArray(geo.features)||!adminGeo||!Array.isArray(adminGeo.features)||!regionData||!Array.isArray(regionData.rivers)) {
   console.error('WORLD DOMINION: map/admin data files are missing or invalid.');
   $('startButton').addEventListener('click',()=>showToast('تعذّر تحميل بيانات الخريطة. تأكد من وجود ملفات البيانات الأصلية.'));
 } else {
