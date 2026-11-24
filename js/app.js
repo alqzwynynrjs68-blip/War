@@ -70,7 +70,7 @@ function fit(b,pad=30) {
   updateView();
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2) {
-  const minW=overviewViewWidth/13.0,maxW=overviewViewWidth/2.4,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
+  const minW=overviewViewWidth/18.0,maxW=overviewViewWidth/2.4,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
   view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; updateView();
 }
@@ -80,7 +80,7 @@ function updateView() {
   updateCityMarkerSizes();
   if(urbanPlanGroup) {
     const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;
-    urbanPlanGroup.style.visibility=zoomLevel>=9.0?'visible':'hidden';
+    urbanPlanGroup.style.visibility=zoomLevel>=13.0?'visible':'hidden';
   }
   // Country borders adapt smoothly to camera zoom: very thin at world overview,
   // progressively clearer at close range. non-scaling-stroke keeps the result
@@ -95,11 +95,8 @@ function updateView() {
     path.setAttribute('stroke-width',width.toFixed(3));
     path.setAttribute('stroke-opacity',opacity.toFixed(3));
   });
-  // ADM1 province boundaries start appearing at zoom 8.0x,
-  // fade in smoothly, then remain fully visible at every closer zoom level.
-  const adminZoomStart=11.0;
-  const adminZoomFull=13.0;
-  const t=Math.max(0,Math.min(1,(zoomLevel-adminZoomStart)/(adminZoomFull-adminZoomStart)));
+  // ADM1 province boundaries appear at 13.0x and remain visible at closer zoom levels.
+  const t=zoomLevel>=13.0?1:0;
   if(adminGroup) {
     adminGroup.style.opacity=String(t);
     adminGroup.style.visibility=t<.015?'hidden':'visible';
@@ -222,8 +219,8 @@ function buildWorldCapitalMarkers() {
   });
 }
 let CITY_MARKERS = [...IRAQ_CITY_MARKERS];
-const CITY_DOTS_ZOOM_LEVEL = 2.40; // تبدأ نقاط المدن عند 2.40x
-const CITY_MODELS_ZOOM_LEVEL = 9.0; // تختفي نقاط المدن عند 9.0x ويظهر مخطط المدينة
+const CITY_DOTS_ZOOM_LEVEL = 3.80; // تبدأ نقاط المدن عند 3.80x
+const CITY_MODELS_ZOOM_LEVEL = 13.0; // تختفي نقاط المدن عند 13.0x ويظهر مخطط المدينة
 const CITY_DOT_SCREEN_SIZE = 5; // قطر النقطة بالبكسل
 function renderCityMarkers() {
   if(!cityMarkerLayer) return;
