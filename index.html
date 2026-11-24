@@ -26,6 +26,7 @@
       <div class="eyebrow">بداية حملتك</div>
       <h2>اختر دولتك</h2>
       <p class="selection-description">اختر الدولة التي تريد قيادتها. لن تتمكن من تغييرها أثناء اللعب إلا بالعودة إلى هذه القائمة.</p>
+      <p id="countryLoading" class="country-loading" hidden>جاري تحميل خريطة العالم…</p>
       <div id="playableCountries" class="playable-countries"></div>
       <button id="selectionBackButton" class="text-back-button">العودة إلى القائمة الرئيسية</button>
     </section>
@@ -62,8 +63,7 @@
     <section id="dialogPanel" class="dialog-panel" hidden></section>
   </main>
 
-  <script src="js/map-data.js"></script>
-  <script src="js/admin-data.js"></script>
+  <script src="js/country-list.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

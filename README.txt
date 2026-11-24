@@ -1,23 +1,7 @@
-WORLD DOMINION - UI UPDATE
+WORLD DOMINION - GLOBAL MAP UPDATE
 
-Modified files only:
-- index.html
-- css/styles.css
-- js/app.js
+The game now includes global country outlines and 3,201 first-level administrative divisions across 196 country/territory groups represented in the supplied geoBoundaries ADM1 dataset. The country picker includes the mapped groups. Existing Iraq and the seven other country map geometries and administrative divisions already in the game were preserved unchanged. Capital city locations are added for all mapped groups, with the existing Iraqi cities retained. The existing city urban-plan image is reused for capital regions.
 
-Install:
-1. Extract this ZIP into your existing project folder.
-2. Replace index.html, css/styles.css, and js/app.js when prompted.
-3. Keep the existing data files unchanged:
-   - js/map-data.js
-   - js/admin-data.js
-4. Upload the updated project to your hosting and hard-refresh the browser.
+The world geometry is loaded after selecting a country to keep the welcome and country-selection screens responsive.
 
-Changes:
-- Welcome screen with Start button.
-- Country selection limited to Iraq, Iran, and Saudi Arabia.
-- Selected country is locked during the game; Back returns to country selection.
-- Fullscreen map beneath a compact top bar; no bottom information panel.
-- Country flag at the upper-right opens a popup with country name and region count.
-- Existing eight-country map, administrative geometry, zoom/pan/pinch behavior, thick national borders, and thin zoom-dependent administrative boundaries are retained.
-- Other five countries remain visible on the map but cannot be selected as playable countries.
+To install, apply the files in the update ZIP at their matching paths. Keep all existing assets and other project files.
