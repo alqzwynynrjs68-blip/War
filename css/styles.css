@@ -171,3 +171,11 @@
  .resource-chip span{font-size:11px}.resource-chip b{font-size:8px}.resource-chip i{font-size:7px}
  #map{inset:88px 0 0}
 }
+
+/* Compact city information: happiness, specialist output, income and workforce */
+.city-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:9px 0 11px}
+.city-summary-item{min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 9px;border:1px solid #46566d;border-radius:8px;background:linear-gradient(145deg,#192b40,#122033);font-size:10px;color:#aebdce}
+.city-summary-item span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.city-summary-item b{color:#e9d6aa;font-size:11px;white-space:nowrap}
+.city-summary-item.happiness b{color:#9ee0ad}
+@media(max-width:480px){.city-summary-grid{gap:5px}.city-summary-item{padding:7px 6px;font-size:9px}.city-summary-item b{font-size:10px}}
