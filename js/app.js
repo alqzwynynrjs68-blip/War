@@ -70,7 +70,7 @@ function fit(b,pad=30) {
   updateView();
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2) {
-  const minW=overviewViewWidth/18.0,maxW=overviewViewWidth/2.4,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
+  const minW=overviewViewWidth/28.0,maxW=overviewViewWidth/3.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
   view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; updateView();
 }
@@ -80,7 +80,7 @@ function updateView() {
   updateCityMarkerSizes();
   if(urbanPlanGroup) {
     const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;
-    urbanPlanGroup.style.visibility=zoomLevel>=13.0?'visible':'hidden';
+    urbanPlanGroup.style.visibility=zoomLevel>=14.5?'visible':'hidden';
   }
   // Country borders adapt smoothly to camera zoom: very thin at world overview,
   // progressively clearer at close range. non-scaling-stroke keeps the result
@@ -95,8 +95,8 @@ function updateView() {
     path.setAttribute('stroke-width',width.toFixed(3));
     path.setAttribute('stroke-opacity',opacity.toFixed(3));
   });
-  // ADM1 province boundaries appear at 13.0x and remain visible at closer zoom levels.
-  const t=zoomLevel>=13.0?1:0;
+  // ADM1 province boundaries appear at 22.0x and remain visible at closer zoom levels.
+  const t=zoomLevel>=22.0?1:0;
   if(adminGroup) {
     adminGroup.style.opacity=String(t);
     adminGroup.style.visibility=t<.015?'hidden':'visible';
@@ -220,7 +220,7 @@ function buildWorldCapitalMarkers() {
 }
 let CITY_MARKERS = [...IRAQ_CITY_MARKERS];
 const CITY_DOTS_ZOOM_LEVEL = 3.80; // تبدأ نقاط المدن عند 3.80x
-const CITY_MODELS_ZOOM_LEVEL = 13.0; // تختفي نقاط المدن عند 13.0x ويظهر مخطط المدينة
+const CITY_MODELS_ZOOM_LEVEL = 14.5; // تختفي نقاط المدن عند 14.5x ويظهر مخطط المدينة
 const CITY_DOT_SCREEN_SIZE = 5; // قطر النقطة بالبكسل
 function renderCityMarkers() {
   if(!cityMarkerLayer) return;
@@ -287,7 +287,7 @@ function renderMap() {
   const allBounds=geo.features.filter(f=>allCountries.some(c=>c.id===f.properties.iso_a3)).map(f=>boundsForGeometry(f.geometry));
   overviewBounds=unionBounds(allBounds); fit(overviewBounds,30); overviewViewWidth=view.w;
   paintCountries(); paintAdminRegions();
-  renderCityMarkers(); zoom(2.4);
+  renderCityMarkers(); zoom(3.0);
   window.addEventListener('resize',updateCityMarkerSizes);
 
   let pointers=new Map(),drag=null,lastDistance=0,moved=false;
@@ -360,7 +360,7 @@ async function enterGame(countryId) {
   $('countryPopover').hidden=true; $('countryFlagButton').setAttribute('aria-expanded','false');
   updateCountryPopover();
   if(!svg) renderMap();
-  else if(overviewBounds) { fit(overviewBounds,30); zoom(2.4); }
+  else if(overviewBounds) { fit(overviewBounds,30); zoom(3.0); }
   paintCountries(); paintAdminRegions();
   requestAnimationFrame(()=>{if(svg)updateView();});
 }
