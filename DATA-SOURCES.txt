@@ -1,0 +1,20 @@
+WORLD DOMINION - GEOGRAPHIC DATA ATTRIBUTION
+
+The regional physical geography vectors in js/region-data.js were extracted and simplified from the geographic boundary datasets bundled with Matplotlib Basemap:
+
+- GSHHS coastline and lake polygons (intermediate resolution; GSHHS v2.3.6 dataset family).
+- GMT / WDBII river and national-boundary line datasets.
+
+Basemap documentation describes its GSHHS coastline data and its river/country boundary datasets:
+https://matplotlib.org/basemap/stable/users/geography.html
+https://matplotlib.org/basemap/stable/api/basemap_api.html
+
+The basemap-data package identifies the bundled land-sea mask, coastline, lake, river, and political-boundary data as extracted from GSHHG and distributed under LGPL-3.0-or-later:
+https://pypi.org/project/basemap-data/
+
+GSHHG source and background:
+https://www.soest.hawaii.edu/wessel/gshhg/
+
+The map uses a regional subset and simplified vector paths for browser performance. Very short river segments are filtered; the geometry is geographic reference data, not a navigational or survey-grade dataset.
+
+Existing country polygons and ADM1 province boundaries from the previous WORLD DOMINION version were retained unchanged.
