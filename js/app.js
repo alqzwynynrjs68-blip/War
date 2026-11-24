@@ -626,28 +626,12 @@ function renderResearch() {
 function renderCategoryResearch(categoryId) {
   const category=RESEARCH_CATEGORIES.find(item=>item.id===categoryId)||RESEARCH_CATEGORIES[0];
   const panel=$('mainPanel');
-  const branchesA=[
-    {id:'basics',name:'التدريب الأساسي',days:[1,2,3,5,7,9,12]},
-    {id:'equipment',name:'تطوير المعدات',days:[1,2,4,5,6,8,10,12]},
-    {id:'field',name:'التكتيكات الميدانية',days:[1,3,4,6,7,9,11,12]},
-    {id:'recon',name:'الاستطلاع',days:[1,2,3,4,7,8,10,12]},
-    {id:'command',name:'القيادة والسيطرة',days:[1,2,5,6,8,9,11,12]}
-  ];
-  const branchesB=[
-    {id:'advanced',name:'التطوير المتقدم',days:[1,2,4,6,8,10,12]},
-    {id:'precision',name:'رفع الكفاءة',days:[1,3,5,6,9,11,12]},
-    {id:'defense',name:'الحماية والدفاع',days:[1,2,3,6,7,10,12]},
-    {id:'mobility',name:'الحركة والانتشار',days:[1,4,5,7,8,11,12]},
-    {id:'operations',name:'إدارة العمليات',days:[1,2,5,7,9,10,12]}
-  ];
-  const day=Math.min(50,Math.floor(gameMinute/1440)+1);
-  const renderTree=(treeName,branches,treeIndex)=>`<section class="research-tree-card">
-    <h3>${treeName}</h3><div class="infantry-tree-grid">
-      ${Array.from({length:50},(_,i)=>{const d=i+1;return `<div class="infantry-tree-day-row ${d%2?'day-light':'day-dark'}" data-day-row="${d}">
-        <div class="infantry-day-number">${d}</div>
-        ${branches.map((branch,index)=>{const has=branch.days.includes(d);return `<div class="infantry-tree-cell"><span class="infantry-tree-line"></span>${has?`<button type="button" class="infantry-tech-node has-tech ${d===1?'day-one-tech':''}" data-tech-branch="${branch.id}" data-tech-day="${d}" data-tree-index="${treeIndex}" aria-label="${treeName}: ${branch.name}، اليوم ${d}"><img src="assets/${category.icon}" alt=""></button>`:''}</div>`;}).join('')}
-      </div>`;}).join('')}
-    </div></section>`;
+  const renderTreeRows=()=>`<div class="category-two-tree-grid" dir="rtl" aria-label="مسارا البحث حتى اليوم الثاني عشر">
+    ${Array.from({length:12},(_,i)=>{const d=i+1;return `<div class="category-two-tree-row ${d%2?'day-light':'day-dark'}" data-day-row="${d}">
+      <div class="category-two-day-number">${d}</div>
+      ${[1,2].map(tree=>`<div class="category-two-tree-cell"><span class="category-two-tree-line"></span><span class="category-two-empty-node" aria-hidden="true"></span></div>`).join('')}
+    </div>`;}).join('')}
+  </div>`;
   panel.classList.add('research-fullscreen','infantry-tree-screen');
   panel.innerHTML=`<div class="panel-head"><strong>أبحاث ${category.name}</strong><button class="panel-close" data-close aria-label="إغلاق">×</button></div>
     <div class="research-tabs" role="group" aria-label="أقسام الأبحاث">
@@ -658,16 +642,12 @@ function renderCategoryResearch(categoryId) {
       <div class="infantry-tree-title"><strong>شجرة أبحاث ${category.name}</strong></div>
       <div class="infantry-calendar"><span class="calendar-smile">📅</span><span>تقويم الحملة</span><b>اليوم ${day} / 50</b></div>
     </div>
-    <div class="category-research-trees" dir="rtl" aria-label="شجرتا أبحاث ${category.name}">
-      ${renderTree('الشجرة الأولى',branchesA,0)}${renderTree('الشجرة الثانية',branchesB,1)}
+    <div class="category-two-trees" aria-label="شجرتا أبحاث ${category.name}">
+      <div class="category-two-tree-head"><span>الشجرة الأولى</span><span>الشجرة الثانية</span><span>اليوم</span></div>
+      ${renderTreeRows()}
     </div>`;
   panel.querySelector('[data-close]').onclick=closePanels;
   panel.querySelectorAll('[data-research-tab]').forEach(tab=>tab.onclick=()=>panel.querySelectorAll('[data-research-tab]').forEach(t=>t.classList.toggle('is-active',t===tab)));
-  panel.querySelectorAll('[data-tech-day]').forEach(node=>node.onclick=()=>{
-    const source=Number(node.dataset.treeIndex)===0?branchesA:branchesB;
-    const branch=source.find(b=>b.id===node.dataset.techBranch); const d=Number(node.dataset.techDay);
-    showCategoryTechDetails(category,branch,d,Number(node.dataset.treeIndex)+1);
-  });
 }
 function renderInfantryResearch(){renderCategoryResearch('infantry');}
 function showCategoryTechDetails(category,branch,day,treeNumber){
