@@ -23,6 +23,7 @@ try { worldWrapEnabled = localStorage.getItem('wd-world-wrap') !== 'off'; } catc
 let toastTimer = null;
 let viewRenderFrame = 0, lastStyledZoom = null, lastStyledCountry = null;
 let activePanel = null, diplomacyTab = 'countries', activeDiplomacyCountry = null;
+let focusedCityMarker = null;
 let selectedCity = null, activeDialog = null, activeConversationCountry = null;
 const relations = {};
 const conversationMessages = {};
@@ -98,7 +99,7 @@ function scheduleViewUpdate() {
   viewRenderFrame=requestAnimationFrame(()=>{viewRenderFrame=0;updateView();});
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2,defer=false) {
-  const minW=overviewViewWidth/50.0,maxW=overviewViewWidth/5.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
+  const minW=overviewViewWidth/65.0,maxW=overviewViewWidth/5.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
   view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; constrainCamera();
   if(defer) scheduleViewUpdate(); else updateView();
@@ -300,6 +301,11 @@ function updateCityMarkerSizes() {
     dot.style.top=top;
     dot.style.display=showDots?'block':'none';
   });
+  if(focusedCityMarker){
+    const wrappedCx=worldWrapEnabled?focusedCityMarker.cx+Math.round((view.x+view.w/2-focusedCityMarker.cx)/1000)*1000:focusedCityMarker.cx;
+    focusedCityMarker.ring.style.left=(offsetX+(wrappedCx-view.x)*scale)+'px';
+    focusedCityMarker.ring.style.top=(offsetY+(focusedCityMarker.cy-view.y)*scale)+'px';
+  }
 }
 
 function createWorldWrapCopies() {
@@ -735,12 +741,25 @@ function focusCity(cityName) {
   const city=CITY_MARKERS.find(item=>item.name===cityName && (item.countryId===selectedCountry?.id || item.country===selectedCountry?.ar));
   if(!city||!svg)return;
   const [x,y]=project([city.lon,city.lat]);
-  const targetZoom= Math.max(overviewViewWidth/Math.min(view.w,overviewViewWidth/12),12);
-  const targetW=overviewViewWidth/Math.min(18,Math.max(12,targetZoom));
-  view={x:x-targetW/2,y:y-(targetW*view.h/view.w)/2,w:targetW,h:targetW*view.h/view.w};
+  const targetW=overviewViewWidth/65.0;
+  const targetH=targetW*view.h/view.w;
+  view={x:x-targetW/2,y:y-targetH/2,w:targetW,h:targetH};
   if(typeof constrainCamera==='function')constrainCamera();
+  // The city list closes so the selected location remains unobstructed.
+  $('mainPanel').hidden=true;
+  $('mainPanel').classList.remove('cities-panel');
+  $('bottomNav').hidden=false;
+  activePanel=null;
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  if(focusedCityMarker?.ring) focusedCityMarker.ring.remove();
+  const ring=document.createElement('div');
+  ring.className='focused-city-ring';
+  ring.setAttribute('aria-label','المدينة المحددة: '+city.name);
+  ring.innerHTML='<span></span>';
+  cityMarkerLayer.appendChild(ring);
+  focusedCityMarker={ring,cx:x,cy:y};
   updateView();
-  showToast('تم الانتقال إلى '+city.name);
+  showToast('تم تحديد '+city.name+' عند تقريب 65.0x');
 }
 function showCityPanel(city) {
   selectedCity=city; activePanel=null;
@@ -749,7 +768,7 @@ function showCityPanel(city) {
   const previous=city.happiness??75;
   const production=CITY_PRODUCTION[city.name]||{key:'food',amount:0,money:0,workforce:0};
   const resource=RESOURCE_DEFS[production.key]||RESOURCE_DEFS.food;
-  $('selectionPanel').innerHTML=`<div class="selection-city-head"><strong>🏙️ ${city.name}</strong><button class="panel-close" id="selectionClose">×</button></div><div class="city-summary-grid"><div class="city-summary-item"><span>${resource.icon} ${resource.name}</span><b>+${production.amount.toLocaleString('en-US')}</b></div><div class="city-summary-item"><span>💵 الدولارات</span><b>+${(production.money||0).toLocaleString('en-US')}</b></div><div class="city-summary-item"><span>👷 القوى العاملة</span><b>${(production.workforce||0).toLocaleString('en-US')}</b></div><div class="city-summary-item"><span>👥 السكان</span><b>${((production.workforce||0)*3).toLocaleString('en-US')}</b></div><div class="city-summary-item happiness"><span>😊 السعادة</span><b>${previous}%</b></div></div><div class="selection-actions"><button id="cityBuild">🏗 البناء</button><button id="cityArmy">⚔ تجهيز الجيش</button></div>`;
+  $('selectionPanel').innerHTML=`<div class="selection-city-head"><strong>🏙️ ${city.name}</strong><button class="panel-close" id="selectionClose">×</button></div><div class="city-summary-grid"><div class="city-summary-item"><span>${resource.icon} ${resource.name}</span><b>+${production.amount.toLocaleString('en-US')}</b></div><div class="city-summary-item"><span>💵 الدولارات</span><b>+${(production.money||0).toLocaleString('en-US')}</b></div><div class="city-summary-item"><span>👷 القوى العاملة</span><b>${(production.workforce||0).toLocaleString('en-US')}</b></div><div class="city-summary-item"><span>👥 السكان</span><b>${((production.workforce||0)*3).toLocaleString('en-US')}</b></div><div class="city-summary-item happiness"><span>😊 السعادة</span><b>${previous}%</b></div></div><div class="selection-actions city-detail-actions"><button class="city-operation selection-operation" id="cityBuild"><span class="operation-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 27h22M9 27V9h2v18M10 9h13M23 9v4M20 13h6M21 13l-3 5h9l-3-5M7 9l3-4 3 4M6 18h5M6 18l-2 3h7l-2-3"/></svg></span><span class="operation-copy"><b>البناء</b><small>إدارة منشآت المدينة</small></span></button><button class="city-operation selection-operation" id="cityArmy"><span class="operation-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 23h18l-1.5-7a7.5 7.5 0 0 0-15 0L7 23Z"/><path d="M5 24h22v3H5zM11 13h10M16 9v4"/></svg></span><span class="operation-copy"><b>تجهيز الجيش</b><small>تشكيل وحدات المدينة</small></span></button></div>`;
   $('selectionClose').onclick=closePanels;
   $('cityArmy').onclick=()=>showToast('تجهيز الجيش في '+city.name);
   $('cityBuild').onclick=()=>showToast('البناء في '+city.name);
