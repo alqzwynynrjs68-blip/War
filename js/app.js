@@ -70,11 +70,7 @@ function fit(b,pad=30) {
   updateView();
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2) {
-  // Keep the playable camera range fixed between 1.0x and 5.0x.
-  // overviewViewWidth represents the initial world-fit width (1.0x).
-  const maxW=overviewViewWidth>0?overviewViewWidth:view.w;
-  const minW=maxW/5;
-  const nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
+  const minW=overviewViewWidth/9.0,maxW=overviewViewWidth/1.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
   view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; updateView();
 }
@@ -99,9 +95,11 @@ function updateView() {
     path.setAttribute('stroke-width',width.toFixed(3));
     path.setAttribute('stroke-opacity',opacity.toFixed(3));
   });
-  // ADM1 province boundaries become visible at exactly 4.0x.
-  // They remain fully visible at closer zoom levels.
-  const t=zoomLevel>=4.0?1:0;
+  // ADM1 province boundaries start appearing at zoom 8.0x,
+  // fade in smoothly, then remain fully visible at every closer zoom level.
+  const adminZoomStart=8.0;
+  const adminZoomFull=8.2;
+  const t=Math.max(0,Math.min(1,(zoomLevel-adminZoomStart)/(adminZoomFull-adminZoomStart)));
   if(adminGroup) {
     adminGroup.style.opacity=String(t);
     adminGroup.style.visibility=t<.015?'hidden':'visible';
@@ -224,9 +222,10 @@ function buildWorldCapitalMarkers() {
   });
 }
 let CITY_MARKERS = [...IRAQ_CITY_MARKERS];
-const CITY_DOTS_ZOOM_LEVEL = 1.50; // تبدأ نقاط المدن عند 1.50x
-const CITY_DOTS_HIDE_ZOOM_LEVEL = 2.40; // تختفي النقاط عند 2.40x
+const CITY_DOTS_ZOOM_LEVEL = 2.40; // تبدأ نقاط المدن عند 2.40x
+const CITY_MODELS_ZOOM_LEVEL = 7.0; // تتحول نقاط المدن إلى مجسمات عند 7.0x
 const CITY_DOT_SCREEN_SIZE = 5; // قطر النقطة بالبكسل
+const CITY_MODEL_SCREEN_SIZE = 20; // عرض مجسم المدينة بالبكسل
 function renderCityMarkers() {
   if(!cityMarkerLayer) return;
   cityMarkerLayer.innerHTML=''; cityMarkerNodes=[];
@@ -237,7 +236,14 @@ function renderCityMarkers() {
     dot.title=city.name;
     dot.style.cssText='position:absolute;width:'+CITY_DOT_SCREEN_SIZE+'px;height:'+CITY_DOT_SCREEN_SIZE+'px;border-radius:50%;background:#ffd76a;border:1px solid #fff;box-shadow:0 0 4px rgba(255,215,106,.8);transform:translate(-50%,-50%);pointer-events:none;display:none;z-index:3;';
     cityMarkerLayer.appendChild(dot);
-    cityMarkerNodes.push({dot,cx,cy});
+    const model=document.createElement('img');
+    model.src='assets/city-model.png';
+    model.alt='';
+    model.setAttribute('aria-hidden','true');
+    model.draggable=false;
+    model.style.cssText='position:absolute;width:'+CITY_MODEL_SCREEN_SIZE+'px;height:auto;transform:translate(-50%,-50%);pointer-events:none;display:none;z-index:4;';
+    cityMarkerLayer.appendChild(model);
+    cityMarkerNodes.push({dot,model,cx,cy});
   });
   updateCityMarkerSizes();
 }
@@ -249,11 +255,17 @@ function updateCityMarkerSizes() {
   const offsetX=(rect.width-view.w*scale)/2;
   const offsetY=(rect.height-view.h*scale)/2;
   const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;
-  const showDots=zoomLevel>=CITY_DOTS_ZOOM_LEVEL && zoomLevel<CITY_DOTS_HIDE_ZOOM_LEVEL;
-  cityMarkerNodes.forEach(({dot,cx,cy})=>{
-    dot.style.left=(offsetX+(cx-view.x)*scale)+'px';
-    dot.style.top=(offsetY+(cy-view.y)*scale)+'px';
+  const showDots=zoomLevel>=CITY_DOTS_ZOOM_LEVEL && zoomLevel<CITY_MODELS_ZOOM_LEVEL;
+  const showModels=zoomLevel>=CITY_MODELS_ZOOM_LEVEL;
+  cityMarkerNodes.forEach(({dot,model,cx,cy})=>{
+    const left=(offsetX+(cx-view.x)*scale)+'px';
+    const top=(offsetY+(cy-view.y)*scale)+'px';
+    dot.style.left=left;
+    dot.style.top=top;
+    model.style.left=left;
+    model.style.top=top;
     dot.style.display=showDots?'block':'none';
+    model.style.display=showModels?'block':'none';
   });
 }
 
@@ -290,7 +302,7 @@ function renderMap() {
   const allBounds=geo.features.filter(f=>allCountries.some(c=>c.id===f.properties.iso_a3)).map(f=>boundsForGeometry(f.geometry));
   overviewBounds=unionBounds(allBounds); fit(overviewBounds,30); overviewViewWidth=view.w;
   paintCountries(); paintAdminRegions();
-  renderCityMarkers(); updateView();
+  renderCityMarkers(); zoom(2.4);
   window.addEventListener('resize',updateCityMarkerSizes);
 
   let pointers=new Map(),drag=null,lastDistance=0,moved=false;
@@ -363,7 +375,7 @@ async function enterGame(countryId) {
   $('countryPopover').hidden=true; $('countryFlagButton').setAttribute('aria-expanded','false');
   updateCountryPopover();
   if(!svg) renderMap();
-  else if(overviewBounds) fit(overviewBounds,30);
+  else if(overviewBounds) { fit(overviewBounds,30); zoom(2.4); }
   paintCountries(); paintAdminRegions();
   requestAnimationFrame(()=>{if(svg)updateView();});
 }
