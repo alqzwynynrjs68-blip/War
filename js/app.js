@@ -83,7 +83,7 @@ function fit(b,pad=30) {
 function constrainCamera() {
   // Wrap longitude continuously; keep a small safety margin at both polar edges.
   view.x=((view.x%1000)+1000)%1000;
-  const verticalMargin=16;
+  const verticalMargin=6.0;
   const minY=verticalMargin;
   const maxY=650-view.h-verticalMargin;
   // If the viewport is taller than the usable map area, center it instead of allowing overscroll.
@@ -94,7 +94,7 @@ function scheduleViewUpdate() {
   viewRenderFrame=requestAnimationFrame(()=>{viewRenderFrame=0;updateView();});
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2,defer=false) {
-  const minW=overviewViewWidth/28.0,maxW=overviewViewWidth/3.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
+  const minW=overviewViewWidth/33.0,maxW=overviewViewWidth/3.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
   view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; constrainCamera();
   if(defer) scheduleViewUpdate(); else updateView();
@@ -122,7 +122,7 @@ function updateView() {
       path.setAttribute('stroke-opacity',opacity.toFixed(3));
     });
     if(urbanPlanGroup) urbanPlanGroup.style.visibility=zoomLevel>=14.5?'visible':'hidden';
-    const t=zoomLevel>=22.0?1:0;
+    const t=zoomLevel>=28.0?1:0;
     if(adminGroup) {
       adminGroup.style.opacity=String(t);
       adminGroup.style.visibility=t<.015?'hidden':'visible';
@@ -168,12 +168,21 @@ function paintAdminRegions() {
 }
 function chooseRegion(feature) {
   const country=allCountries.find(c=>c.id===feature.properties.shapeGroup);
-  if(!country || country.id!==selectedCountry.id) {
-    showToast('هذه المنطقة تتبع دولة أخرى. للعب بها ارجع إلى قائمة الدول.'); return;
-  }
+  if(!country) return;
   selectedRegion=feature; selectedCity=null; paintAdminRegions();
+  // Provinces in every country can be inspected. Only the player's own
+  // country keeps the existing city/building interactions.
+  if(country.id!==selectedCountry.id) { showForeignRegionPopover(feature,country); return; }
   const city=CITY_MARKERS.find(item=>(item.countryId===selectedCountry.id || item.country===selectedCountry.ar) && pointInFeature([item.lon,item.lat],feature));
   if(city) showCityPanel(city); else showRegionPanel(feature);
+}
+function showForeignRegionPopover(feature,country) {
+  const panel=$('selectionPanel');
+  $('mainPanel').hidden=true; $('bottomNav').hidden=true; $('dialogPanel').hidden=true;
+  panel.hidden=false;
+  panel.innerHTML=`<div class="selection-city-head"><strong>🗺️ ${getRegionName(feature)}</strong><button class="panel-close" id="selectionClose" aria-label="إغلاق">×</button></div>`;
+  panel.style.cssText='position:fixed;left:50%;bottom:105px;transform:translateX(-50%);z-index:30;width:max-content;min-width:190px;max-width:80vw;padding:12px 16px;border:1px solid #c49a4a;border-radius:12px;background:#101d2d;color:#f5e7c8;box-shadow:0 8px 28px rgba(0,0,0,.45);';
+  $('selectionClose').onclick=closePanels;
 }
 function pointInRing(point,ring) {
   const [x,y]=point; let inside=false;
@@ -247,7 +256,7 @@ function buildWorldCapitalMarkers() {
   });
 }
 let CITY_MARKERS = [...IRAQ_CITY_MARKERS];
-const CITY_DOTS_ZOOM_LEVEL = 3.80; // تبدأ نقاط المدن عند 3.80x
+const CITY_DOTS_ZOOM_LEVEL = 8.0; // تبدأ نقاط المدن عند 8.0x
 const CITY_MODELS_ZOOM_LEVEL = 14.5; // تختفي نقاط المدن عند 14.5x ويظهر مخطط المدينة
 const CITY_DOT_SCREEN_SIZE = 5; // قطر النقطة بالبكسل
 function renderCityMarkers() {
@@ -433,6 +442,7 @@ function showBottomPanel(id) {
   else { panel.innerHTML=''; panel.hidden=true; }
 }
 function closePanels() {
+  $('selectionPanel').style.cssText='';
   activePanel=null; activeDialog=null;
   $('mainPanel').hidden=true; $('selectionPanel').hidden=true; $('dialogPanel').hidden=true;
   $('bottomNav').hidden=false;
@@ -634,6 +644,7 @@ function openResourcePopover(key,anchor) {
   pop.querySelector('.resource-popover-close').onclick=()=>pop.hidden=true;
 }
 function showCityPanel(city) {
+  $('selectionPanel').style.cssText='';
   selectedCity=city; activePanel=null;
   $('mainPanel').hidden=true; $('bottomNav').hidden=true; $('dialogPanel').hidden=true;
   $('selectionPanel').hidden=false;
@@ -644,6 +655,7 @@ function showCityPanel(city) {
   $('cityBuild').onclick=()=>showToast('البناء في '+city.name);
 }
 function showRegionPanel(feature) {
+  $('selectionPanel').style.cssText='';
   $('mainPanel').hidden=true; $('bottomNav').hidden=true; $('dialogPanel').hidden=true;
   $('selectionPanel').hidden=false;
   $('selectionPanel').innerHTML=`<div class="selection-city-head"><strong>🗺️ ${getRegionName(feature)}</strong><button class="panel-close" id="selectionClose">×</button></div><div class="selection-actions"><button id="regionBuild">🏗 بناء</button></div>`;
