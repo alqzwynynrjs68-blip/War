@@ -98,7 +98,7 @@ function scheduleViewUpdate() {
   viewRenderFrame=requestAnimationFrame(()=>{viewRenderFrame=0;updateView();});
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2,defer=false) {
-  const minW=overviewViewWidth/50.0,maxW=overviewViewWidth/5.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
+  const minW=overviewViewWidth/37.0,maxW=overviewViewWidth/5.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
   view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; constrainCamera();
   if(defer) scheduleViewUpdate(); else updateView();
@@ -490,7 +490,7 @@ function showBottomPanel(id) {
 function closePanels() {
   $('selectionPanel').style.cssText='';
   activePanel=null; activeDialog=null;
-  $('mainPanel').hidden=true; $('selectionPanel').hidden=true; $('dialogPanel').hidden=true;
+  $('mainPanel').hidden=true; $('mainPanel').classList.remove('research-fullscreen'); $('selectionPanel').hidden=true; $('dialogPanel').hidden=true;
   $('bottomNav').hidden=false;
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
 }
@@ -591,14 +591,15 @@ function renderResearch() {
     {id:'missiles',name:'الصواريخ',image:'missiles.jpg',icon:'missiles-icon.png'},
     {id:'officers',name:'الضباط',image:'officers.jpg',icon:'officers-icon.png'}
   ];
+  $('mainPanel').classList.add('research-fullscreen');
   $('mainPanel').innerHTML=`<div class="panel-head"><strong>الأبحاث العسكرية</strong><button class="panel-close" data-close aria-label="إغلاق">×</button></div>
     <div class="research-tabs" role="group" aria-label="أقسام الأبحاث">
       <button class="research-tab is-active" type="button" data-research-tab="first"><span class="research-tab-image" aria-hidden="true">▧</span><b>البحث الأول</b></button>
       <button class="research-tab" type="button" data-research-tab="second"><span class="research-tab-image" aria-hidden="true">▧</span><b>البحث الثاني</b></button>
     </div>
     <div class="panel-content research-list">${researchCategories.map(category=>`<button class="research-category-button" type="button" data-research-category="${category.id}" aria-label="${category.name}">
-      <span class="research-category-art" style="background-image:url('assets/research/${category.image}')" aria-hidden="true"></span>
-      <span class="research-category-logo"><img src="assets/research/${category.icon}" alt=""></span>
+      <span class="research-category-art" style="background-image:url('assets/${category.image}')" aria-hidden="true"></span>
+      <span class="research-category-logo"><img src="assets/${category.icon}" alt=""></span>
       <span class="research-category-copy"><b>${category.name}</b></span>
     </button>`).join('')}</div>`;
   $('mainPanel').querySelector('[data-close]').onclick=closePanels;
