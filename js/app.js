@@ -146,9 +146,23 @@ function showToast(message) {
   const el=$('mapToast'); el.textContent=message; el.classList.add('show');
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2600);
 }
+const ARABIC_REGION_NAMES={
+  'Baghdad':'بغداد','Basra':'البصرة','Al Basrah':'البصرة','Anbar':'الأنبار','Al Anbar':'الأنبار','Nineveh':'نينوى','Ninawa':'نينوى','Mosul':'الموصل','Erbil':'أربيل','Arbil':'أربيل','Sulaymaniyah':'السليمانية','As Sulaymaniyah':'السليمانية','Dohuk':'دهوك','Diyala':'ديالى','Wasit':'واسط','Kut':'الكوت','Maysan':'ميسان','Amarah':'العمارة','Dhi Qar':'ذي قار','Nasiriyah':'الناصرية','Najaf':'النجف','Karbala':'كربلاء','Qadisiyah':'القادسية','Al Qadisiyah':'القادسية','Babil':'بابل','Babylon':'بابل','Kirkuk':'كركوك','Saladin':'صلاح الدين','Salah ad Din':'صلاح الدين','Al Muthanna':'المثنى','Muthanna':'المثنى',
+  'Tehran':'طهران','Khuzestan':'خوزستان','Ilam':'إيلام','Kermanshah':'كرمانشاه','Kurdistan':'كردستان','West Azerbaijan':'أذربيجان الغربية','East Azerbaijan':'أذربيجان الشرقية','Fars':'فارس','Hormozgan':'هرمزغان','Bushehr':'بوشهر','Kuwait':'الكويت','Al Ahmadi':'الأحمدي','Hawalli':'حولي','Jahra':'الجهراء','Capital':'العاصمة'
+};
+function transliterateRegionName(value) {
+  const raw=String(value||'').trim();
+  if(!raw) return 'منطقة';
+  if(/[\u0600-\u06FF]/.test(raw)) return raw;
+  if(ARABIC_REGION_NAMES[raw]) return ARABIC_REGION_NAMES[raw];
+  const words=raw.replace(/[_-]+/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').split(/\s+/);
+  const map={a:'ا',b:'ب',c:'ك',d:'د',e:'ي',f:'ف',g:'غ',h:'ه',i:'ي',j:'ج',k:'ك',l:'ل',m:'م',n:'ن',o:'و',p:'ب',q:'ق',r:'ر',s:'س',t:'ت',u:'و',v:'ف',w:'و',x:'كس',y:'ي',z:'ز'};
+  return words.map(word=>{const lower=word.toLowerCase(); if(ARABIC_REGION_NAMES[word])return ARABIC_REGION_NAMES[word]; return [...lower].map(ch=>map[ch]||'').join('');}).join(' ');
+}
 function getRegionName(f) {
   const p=f.properties||{};
-  return p.shapeName||p.NAME_1||p.name_local||p.name_ar||p.name_en||p.name||p.admin||p.NAME||'منطقة';
+  const source=p.name_ar||p.name_local||p.shapeName||p.NAME_1||p.name_en||p.name||p.admin||p.NAME||'منطقة';
+  return transliterateRegionName(source);
 }
 function paintCountries() {
   baseGroup.querySelectorAll('path').forEach(p=>{
@@ -630,7 +644,7 @@ function renderInfantryResearch() {
     </div>
     <div class="infantry-tree-toolbar">
       <div class="infantry-calendar"><span class="calendar-smile">📅</span><span>تقويم الحملة</span><b>اليوم ${day} / 50</b></div>
-      <div class="infantry-tree-title"><img src="assets/infantry-icon.png" alt=""><strong>شجرة أبحاث المشاة</strong></div>
+      <div class="infantry-tree-title"><strong>شجرة أبحاث المشاة</strong></div>
     </div>
     <div class="infantry-tree-scroll" dir="rtl" aria-label="شجرة أبحاث المشاة">
       <div class="infantry-tree-grid">
