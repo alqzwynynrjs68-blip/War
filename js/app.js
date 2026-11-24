@@ -23,6 +23,11 @@ let activePanel = null, diplomacyTab = 'countries', activeDiplomacyCountry = nul
 let selectedCity = null, activeDialog = null, activeConversationCountry = null;
 const relations = {};
 const conversationMessages = {};
+// Campaign state is initialized only when a country is selected and the world opens.
+const STARTING_RESOURCES = Object.freeze({money:10000, iron:5000, electronics:5000});
+let resources = {...STARTING_RESOURCES};
+let gameStartedAt = null, gameClockTimer = null, gameMinute = 0;
+let infantryResearch = {status:'available', completesAt:null};
 
 function project([lon,lat]) { return [(lon+180)/360*1000,(90-lat)/180*650]; }
 function ringsToPath(coords) {
@@ -96,8 +101,8 @@ function paintCountries() {
   });
   countryBorderPaths.forEach(({id,path})=>{
     const active=selectedCountry&&id===selectedCountry.id;
-    path.setAttribute('stroke',active?'#e6c98f':'#8192a5');
-    path.setAttribute('stroke-width',active?'4.6':'3.8');
+    path.setAttribute('stroke','#ffffff');
+    path.setAttribute('stroke-width',active?'2.2':'1.9');
     path.setAttribute('stroke-opacity',active?'1':'.92');
   });
 }
@@ -251,7 +256,7 @@ function renderMap() {
   geo.features.forEach(feature=>{
     const id=feature.properties.iso_a3;
     if(!allCountries.some(c=>c.id===id)) return;
-    const path=addSvg('path',{d:geometryPath(feature.geometry),fill:'none',stroke:'#8192a5','stroke-width':'3.8','stroke-opacity':'.98','vector-effect':'non-scaling-stroke'},countryBorderGroup);
+    const path=addSvg('path',{d:geometryPath(feature.geometry),fill:'none',stroke:'#ffffff','stroke-width':'1.9','stroke-opacity':'.98','vector-effect':'non-scaling-stroke'},countryBorderGroup);
     countryBorderPaths.push({id,path});
   });
   const allBounds=geo.features.filter(f=>allCountries.some(c=>c.id===f.properties.iso_a3)).map(f=>boundsForGeometry(f.geometry));
@@ -301,6 +306,7 @@ function updateCountryPopover() {
 function enterGame(countryId) {
   selectedCountry=playableCountries.find(c=>c.id===countryId);
   if(!selectedCountry) return;
+  startNewCampaignClock();
   selectedRegion=null; closePanels();
   $('welcomeScreen').hidden=true; $('countryScreen').hidden=true; $('gameScreen').hidden=false;
   $('countryPopover').hidden=true; $('countryFlagButton').setAttribute('aria-expanded','false');
@@ -311,6 +317,7 @@ function enterGame(countryId) {
   requestAnimationFrame(()=>{if(svg)updateView();});
 }
 function returnToCountrySelection() {
+  stopCampaignClock();
   selectedCountry=null; selectedRegion=null;
   $('countryPopover').hidden=true; $('countryFlagButton').setAttribute('aria-expanded','false');
   $('gameScreen').hidden=true; $('welcomeScreen').hidden=true; $('countryScreen').hidden=false;
@@ -434,11 +441,75 @@ function renderResearch() {
       </button>
     </div>`;
   $('mainPanel').querySelector('[data-close]').onclick=closePanels;
-  $('infantryChoice').onclick=()=>{
-    $('dialogPanel').hidden=false;
-    $('dialogPanel').innerHTML=`<div class="dialog-head"><strong>🪖 المشاة</strong><button id="dialogClose">×</button></div><div class="infantry-card"><div class="infantry-figure">🪖</div><strong>جندي مشاة</strong><p>وحدة برية أساسية للسيطرة على الأراضي والدفاع عنها</p></div>`;
-    $('dialogClose').onclick=()=>$('dialogPanel').hidden=true;
+  $('infantryChoice').onclick=renderInfantryResearch;
+}
+function renderInfantryResearch() {
+  $('dialogPanel').hidden=false;
+  $('dialogPanel').innerHTML=`
+    <div class="dialog-head"><strong>أبحاث المشاة</strong><button id="dialogClose" aria-label="إغلاق">×</button></div>
+    <div class="infantry-research-top">
+      <button class="infantry-round-icon" id="infantryInfoButton" aria-label="معلومات جندي المشاة">🪖</button>
+      <strong>تطوير جندي المشاة</strong>
+      <small>اضغط على أيقونة الجندي لعرض مهامه</small>
+    </div>
+    <div class="infantry-cost-section"><strong>متطلبات البحث</strong>
+      <div class="resource-costs"><span>💵 1,000</span><span>📟 150</span><span>⚙️ 250</span></div>
+    </div>
+    <div class="infantry-cost-section maintenance-section"><strong>الصيانة اليومية</strong>
+      <div class="resource-costs"><span>💵 50</span><span>📟 5</span><span>⚙️ 10</span></div>
+    </div>
+    <div class="research-duration">وقت البحث <b>دقيقة واحدة</b></div>
+    <div id="infantryResearchStatus" class="research-status" aria-live="polite">${infantryResearch.status==='completed'?'تم إكمال البحث':infantryResearch.status==='running'?'البحث جارٍ...':'جاهز للبحث'}</div>
+    <button id="startInfantryResearch" class="start-research-button" ${infantryResearch.status!=='available'?'disabled':''}>${infantryResearch.status==='completed'?'تم البحث':infantryResearch.status==='running'?'جارٍ البحث...':'بحث'}</button>`;
+  $('dialogClose').onclick=()=>$('dialogPanel').hidden=true;
+  $('infantryInfoButton').onclick=()=>{
+    const existing=$('infantryDescription');
+    if(existing){existing.remove();return;}
+    const info=document.createElement('div'); info.id='infantryDescription'; info.className='infantry-description';
+    info.textContent='هذا جندي مشاة يستطيع الدفاع عن الأراضي، ومهاجمة الأعداء، واحتلال الأراضي.';
+    $('infantryInfoButton').parentNode.insertAdjacentElement('afterend',info);
   };
+  $('startInfantryResearch').onclick=()=>{
+    if(infantryResearch.status!=='available') return;
+    if(resources.money<1000||resources.electronics<150||resources.iron<250){showToast('الموارد غير كافية لإجراء البحث');return;}
+    resources.money-=1000; resources.electronics-=150; resources.iron-=250;
+    infantryResearch={status:'running',completesAt:gameMinute+1};
+    updateGameStatus();
+    $('startInfantryResearch').disabled=true; $('startInfantryResearch').textContent='جارٍ البحث...';
+    $('infantryResearchStatus').textContent='البحث جارٍ...';
+  };
+}
+function startNewCampaignClock() {
+  stopCampaignClock();
+  resources={...STARTING_RESOURCES};
+  infantryResearch={status:'available',completesAt:null};
+  gameStartedAt=Date.now(); gameMinute=0;
+  updateGameStatus();
+  gameClockTimer=window.setInterval(updateCampaignClock,1000);
+}
+function stopCampaignClock() {
+  if(gameClockTimer!==null) window.clearInterval(gameClockTimer);
+  gameClockTimer=null; gameStartedAt=null;
+}
+function updateCampaignClock() {
+  if(gameStartedAt===null) return;
+  // One in-game minute passes every five real seconds (one game hour = five real minutes).
+  gameMinute=Math.floor((Date.now()-gameStartedAt)/5000);
+  if(infantryResearch.status==='running' && gameMinute>=infantryResearch.completesAt) {
+    infantryResearch={status:'completed',completesAt:null};
+    if(!$('dialogPanel').hidden && $('dialogPanel').querySelector('#infantryResearchStatus')) renderInfantryResearch();
+    showToast('اكتمل بحث المشاة');
+  }
+  updateGameStatus();
+}
+function updateGameStatus() {
+  const day=Math.floor(gameMinute/1440)+1;
+  const minuteOfDay=gameMinute%1440;
+  const hours=String(Math.floor(minuteOfDay/60)).padStart(2,'0');
+  const minutes=String(minuteOfDay%60).padStart(2,'0');
+  const date=$('gameDateTime'); const money=$('moneyValue');
+  if(date) date.textContent=`يوم ${day} | ${hours}:${minutes}`;
+  if(money) money.textContent=resources.money.toLocaleString('en-US');
 }
 function showCityPanel(city) {
   selectedCity=city; activePanel=null;
