@@ -29,8 +29,8 @@ const RESOURCE_DEFS = {
   supplies:{icon:'📦',name:'الإمدادات',stock:900,consumption:22}, iron:{icon:'🔩',name:'الحديد',stock:1200,consumption:18}, rubber:{icon:'⚫',name:'المطاط',stock:700,consumption:10}, electronics:{icon:'💻',name:'الإلكترونيات',stock:800,consumption:9}, rare:{icon:'💎',name:'القطع النادرة',stock:250,consumption:3}
 };
 const CITY_PRODUCTION = {
-  'بغداد':{key:'supplies',amount:90},'النجف':{key:'food',amount:75},'البصرة':{key:'oil',amount:110},'الرمادي':{key:'rubber',amount:35},'الموصل':{key:'iron',amount:65},'السليمانية':{key:'electronics',amount:28},'الكوت':{key:'workforce',amount:45},
-  'الرياض':{key:'money',amount:95},'طهران':{key:'electronics',amount:55},'مدينة الكويت':{key:'oil',amount:55},'مسقط':{key:'supplies',amount:35},'المنامة':{key:'money',amount:40},'الدوحة':{key:'rare',amount:12}
+  'بغداد':{key:'supplies',amount:90,money:55,workforce:28},'النجف':{key:'food',amount:75,money:32,workforce:24},'البصرة':{key:'oil',amount:110,money:68,workforce:30},'الرمادي':{key:'rubber',amount:35,money:24,workforce:18},'الموصل':{key:'iron',amount:65,money:42,workforce:26},'السليمانية':{key:'electronics',amount:28,money:38,workforce:20},'الكوت':{key:'workforce',amount:45,money:22,workforce:18},
+  'الرياض':{key:'money',amount:95,money:95,workforce:34},'طهران':{key:'electronics',amount:55,money:72,workforce:38},'مدينة الكويت':{key:'oil',amount:55,money:48,workforce:16},'مسقط':{key:'supplies',amount:35,money:30,workforce:17},'المنامة':{key:'money',amount:40,money:40,workforce:14},'الدوحة':{key:'rare',amount:12,money:58,workforce:19}
 };
 let resources = Object.fromEntries(Object.entries(RESOURCE_DEFS).map(([key,def])=>[key,def.stock]));
 let resourceProduction = {}, resourceConsumption = {};
@@ -525,7 +525,7 @@ function recalculateEconomy() {
   resourceProduction={}; resourceConsumption={};
   Object.keys(RESOURCE_DEFS).forEach(key=>{resourceProduction[key]=0;resourceConsumption[key]=RESOURCE_DEFS[key].consumption;});
   const cities=CITY_MARKERS.filter(city=>selectedCountry&&city.country===selectedCountry.ar);
-  cities.forEach(city=>{const p=CITY_PRODUCTION[city.name];if(p)resourceProduction[p.key]=(resourceProduction[p.key]||0)+p.amount;});
+  cities.forEach(city=>{const p=CITY_PRODUCTION[city.name];if(p){resourceProduction[p.key]=(resourceProduction[p.key]||0)+p.amount;resourceProduction.money=(resourceProduction.money||0)+(p.money||0);resourceProduction.workforce=(resourceProduction.workforce||0)+(p.workforce||0);}});
 }
 function applyDailyEconomy() {
   recalculateEconomy();
@@ -553,8 +553,8 @@ function showCityPanel(city) {
   selectedCity=city; activePanel=null;
   $('mainPanel').hidden=true; $('bottomNav').hidden=true; $('dialogPanel').hidden=true;
   $('selectionPanel').hidden=false;
-  const production=CITY_PRODUCTION[city.name]||{key:'food',amount:20}; const def=RESOURCE_DEFS[production.key];
-  $('selectionPanel').innerHTML=`<div class="selection-city-head"><strong>🏙️ ${city.name}</strong><button class="panel-close" id="selectionClose">×</button></div><div class="happiness">😊 السعادة <b>75%</b></div><div class="city-production"><span>إنتاج المدينة</span><strong>${def.icon} ${def.name} <b>+${production.amount.toLocaleString('en-US')} يومياً</b></strong></div><div class="selection-actions"><button id="cityBuild">🏗 بناء</button><button id="cityArmy">⚔ تصنيع جيش</button></div>`;
+  const production=CITY_PRODUCTION[city.name]||{key:'food',amount:20,money:15,workforce:10}; const def=RESOURCE_DEFS[production.key];
+  $('selectionPanel').innerHTML=`<div class="selection-city-head"><strong>🏙️ ${city.name}</strong><button class="panel-close" id="selectionClose">×</button></div><div class="city-summary-grid"><div class="city-summary-item happiness"><span>😊 السعادة</span><b>75%</b></div><div class="city-summary-item"><span>🏭 الإنتاج</span><b>${def.icon} +${production.amount.toLocaleString('en-US')}</b></div><div class="city-summary-item"><span>💵 الدولارات</span><b>+${(production.money||0).toLocaleString('en-US')} / يوم</b></div><div class="city-summary-item"><span>👷 القوى العاملة</span><b>+${(production.workforce||0).toLocaleString('en-US')} / يوم</b></div></div><div class="selection-actions"><button id="cityBuild">🏗 البناء</button><button id="cityArmy">⚔ تصنيع الجيش</button></div>`;
   $('selectionClose').onclick=closePanels;
   $('cityArmy').onclick=()=>showToast('تم فتح تصنيع الجيش للمدينة: '+city.name);
   $('cityBuild').onclick=()=>showToast('البناء في '+city.name);
