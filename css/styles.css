@@ -395,3 +395,7 @@
 .category-two-tree-line{position:absolute;top:0;bottom:0;width:2px;background:linear-gradient(180deg,#b99a62aa,#748ba188);box-shadow:0 0 4px #b99a6233}
 .category-two-empty-node{position:relative;z-index:1;width:13px;height:13px;border:1px solid #9d895f;border-radius:50%;background:#142338;box-shadow:0 0 0 4px #142338aa}
 @media(max-width:700px){.category-two-tree-head,.category-two-tree-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 40px;min-width:270px}.category-two-tree-row{min-height:49px}.category-two-tree-head{font-size:10px}}
+
+/* Ensure the paired research paths occupy the available panel height. */
+.category-two-tree-grid{display:block;min-width:300px;width:100%;}
+.category-two-trees{display:block;flex:1 1 auto;min-height:0;}
