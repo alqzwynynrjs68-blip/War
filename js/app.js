@@ -98,7 +98,7 @@ function scheduleViewUpdate() {
   viewRenderFrame=requestAnimationFrame(()=>{viewRenderFrame=0;updateView();});
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2,defer=false) {
-  const minW=overviewViewWidth/37.0,maxW=overviewViewWidth/5.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
+  const minW=overviewViewWidth/75.0,maxW=overviewViewWidth/5.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
   view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; constrainCamera();
   if(defer) scheduleViewUpdate(); else updateView();
@@ -126,7 +126,7 @@ function updateView() {
       path.setAttribute('stroke-opacity',opacity.toFixed(3));
     });
     if(urbanPlanGroup) urbanPlanGroup.style.visibility=zoomLevel>=14.5?'visible':'hidden';
-    const t=zoomLevel>=28.0?1:0;
+    const t=zoomLevel>=65.0?1:0;
     wrapCopies.forEach(copy=>{
       if(copy.index===1){
         copy.left.style.opacity=String(t); copy.right.style.opacity=String(t);
@@ -634,7 +634,6 @@ function renderInfantryResearch() {
     </div>
     <div class="infantry-tree-scroll" dir="rtl" aria-label="شجرة أبحاث المشاة">
       <div class="infantry-tree-grid">
-        <div class="infantry-tree-grid-head"><span class="day-head">اليوم</span>${branches.map(b=>`<strong>${b.name}</strong>`).join('')}</div>
         ${Array.from({length:50},(_,i)=>{const d=i+1;return `<div class="infantry-tree-day-row ${d%2?'day-light':'day-dark'}" data-day-row="${d}">
           <div class="infantry-day-number">${d}</div>
           ${branches.map(branch=>{const has=branch.days.includes(d);return `<div class="infantry-tree-cell"><span class="infantry-tree-line"></span>${has?`<button type="button" class="infantry-tech-node has-tech ${d===1?'day-one-tech':''}" data-tech-branch="${branch.id}" data-tech-day="${d}" aria-label="بحث ${branch.name} اليوم ${d}"><img src="assets/infantry-icon.png" alt=""></button>`:''}</div>`;}).join('')}
