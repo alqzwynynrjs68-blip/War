@@ -644,7 +644,7 @@ function renderCategoryResearch(categoryId) {
       <div class="infantry-calendar"><span class="calendar-smile">📅</span><span>تقويم الحملة</span><b>اليوم ${campaignDay} / 50</b></div>
     </div>
     <div class="category-two-trees" aria-label="شجرتا أبحاث ${category.name}">
-      <div class="category-two-tree-head"><span>الشجرة الأولى</span><span>الشجرة الثانية</span><span>اليوم</span></div>
+      <div class="category-two-tree-head"><span>الأيام</span><span>الشجرة الأولى</span><span>الشجرة الثانية</span></div>
       ${renderTreeRows()}
     </div>`;
   panel.querySelector('[data-close]').onclick=closePanels;
