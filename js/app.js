@@ -67,12 +67,17 @@ function unionBounds(items) {
 function fit(b,pad=30) {
   const w=Math.max(30,b.w+pad*2),h=Math.max(30,b.h+pad*2),s=Math.min(1000/w,650/h);
   view={x:b.x-(1000-w*s)/2/s,y:b.y-(650-h*s)/2/s,w:1000/s,h:650/s};
+  constrainCamera();
   updateView();
 }
 function constrainCamera() {
-  // Wrap longitude continuously while keeping the camera inside the north/south map limits.
+  // Wrap longitude continuously; keep a small safety margin at both polar edges.
   view.x=((view.x%1000)+1000)%1000;
-  view.y=Math.max(0,Math.min(650-view.h,view.y));
+  const verticalMargin=16;
+  const minY=verticalMargin;
+  const maxY=650-view.h-verticalMargin;
+  // If the viewport is taller than the usable map area, center it instead of allowing overscroll.
+  view.y=maxY<minY?(650-view.h)/2:Math.max(minY,Math.min(maxY,view.y));
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2) {
   const minW=overviewViewWidth/28.0,maxW=overviewViewWidth/3.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
