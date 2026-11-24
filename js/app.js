@@ -95,9 +95,11 @@ function updateView() {
     path.setAttribute('stroke-width',width.toFixed(3));
     path.setAttribute('stroke-opacity',opacity.toFixed(3));
   });
-  // ADM1 lines are hidden at the full Gulf overview and fade in as the user zooms closer.
-  const hideAt=overviewViewWidth*.985, fullAt=overviewViewWidth*.70;
-  const t=Math.max(0,Math.min(1,(hideAt-view.w)/(hideAt-fullAt)));
+  // ADM1 province boundaries start appearing at zoom 3.2x,
+  // fade in smoothly, then remain fully visible at every closer zoom level.
+  const adminZoomStart=3.2;
+  const adminZoomFull=3.6;
+  const t=Math.max(0,Math.min(1,(zoomLevel-adminZoomStart)/(adminZoomFull-adminZoomStart)));
   if(adminGroup) {
     adminGroup.style.opacity=String(t);
     adminGroup.style.visibility=t<.015?'hidden':'visible';
