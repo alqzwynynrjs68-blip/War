@@ -436,10 +436,11 @@ function showBottomPanel(id) {
   $('selectionPanel').hidden=true; $('dialogPanel').hidden=true;
   $('bottomNav').hidden=false;
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.panel===id));
-  const panel=$('mainPanel'); panel.hidden=false;
+  const panel=$('mainPanel'); panel.hidden=false; panel.classList.remove('cities-panel');
   if(id==='diplomacy') renderDiplomacy();
   else if(id==='research') renderResearch();
-  else { panel.innerHTML=''; panel.hidden=true; }
+  else if(id==='cities') renderCities();
+  else { panel.classList.remove('cities-panel'); panel.innerHTML=''; panel.hidden=true; }
 }
 function closePanels() {
   $('selectionPanel').style.cssText='';
@@ -643,15 +644,69 @@ function openResourcePopover(key,anchor) {
   const r=anchor.getBoundingClientRect(); pop.style.top=Math.max(8,Math.min(window.innerHeight-190,r.bottom+7))+'px'; pop.style.left=Math.max(8,Math.min(window.innerWidth-245,r.left-95))+'px'; pop.hidden=false;
   pop.querySelector('.resource-popover-close').onclick=()=>pop.hidden=true;
 }
+function renderCities() {
+  const panel=$('mainPanel');
+  const cities=CITY_MARKERS.filter(city=>city.countryId===selectedCountry?.id || city.country===selectedCountry?.ar);
+  panel.hidden=false;
+  panel.classList.add('cities-panel');
+  panel.innerHTML=`<div class="panel-head"><strong>مدن ${selectedCountry?.ar||'الدولة'}</strong><button class="panel-close" data-close aria-label="إغلاق">×</button></div><div class="cities-list">${cities.length?cities.map((city,index)=>cityCardMarkup(city,index)).join(''):'<p class="empty-note">لا توجد مدن مسجلة لهذه الدولة حالياً</p>'}</div>`;
+  panel.querySelector('[data-close]').onclick=closePanels;
+  panel.querySelectorAll('[data-city-gps]').forEach(button=>button.addEventListener('click',()=>focusCity(button.dataset.cityGps)));
+  panel.querySelectorAll('[data-city-action]').forEach(button=>button.addEventListener('click',()=>{
+    const city=cities[Number(button.dataset.cityAction)];
+    if(!city)return;
+    const kind=button.dataset.actionKind;
+    showToast(kind==='army'?'تجهيز الجيش في '+city.name:'البناء في '+city.name);
+  }));
+}
+function cityCardMarkup(city,index) {
+  const production=CITY_PRODUCTION[city.name]||{key:'food',amount:0,money:0,workforce:0};
+  const resource=RESOURCE_DEFS[production.key]||RESOURCE_DEFS.food;
+  const workforce=Math.max(0,Number(production.workforce)||0);
+  const population=workforce*3;
+  const happiness=Number(city.happiness??75);
+  const smile=happiness>=80?'😄':happiness>=60?'😊':happiness>=40?'😐':happiness>=20?'😟':'😢';
+  const home=(city.ownerCountryId||city.countryId)===selectedCountry?.id && !city.occupied;
+  const status=home?'مدينة وطن':'مدينة تحت السيطرة';
+  const operation=city.operation||null;
+  const progress=operation?Math.max(0,Math.min(100,Number(operation.progress)||0)):0;
+  const opText=operation?`${operation.name||'عملية جارية'} · ${progress}% · ${operation.remaining||'الوقت غير محدد'}`:'لا توجد عملية جارية';
+  return `<article class="city-management-card">
+    <div class="city-card-top"><button class="city-gps" type="button" data-city-gps="${city.name}" aria-label="الانتقال إلى ${city.name}" title="الانتقال إلى المدينة"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg></button><div class="city-card-name">${city.name}</div><div class="city-status ${home?'is-home':'is-controlled'}">${status}</div></div>
+    <div class="city-card-data"><div class="city-resource-grid">
+      <div class="city-resource"><span class="city-resource-icon">${resource.icon}</span><b>${Number(production.amount||0).toLocaleString('en-US')}</b><small>${resource.name}</small></div>
+      <div class="city-resource"><span class="city-resource-icon">💵</span><b>${Number(production.money||0).toLocaleString('en-US')}</b><small>الدولارات</small></div>
+      <div class="city-resource"><span class="city-resource-icon">👷</span><b>${workforce.toLocaleString('en-US')}</b><small>القوى العاملة</small></div>
+      <div class="city-resource"><span class="city-resource-icon">👥</span><b>${population.toLocaleString('en-US')}</b><small>السكان</small></div>
+    </div><div class="city-happiness"><span class="city-smile">${smile}</span><b>${happiness}%</b><small>السعادة</small><div class="city-meter"><i style="width:${happiness}%"></i></div></div></div>
+    <div class="city-photo-slots" aria-label="أماكن صور مستقبلية">${Array.from({length:5},()=>'<div class="city-photo-slot"><span>＋</span></div>').join('')}</div>
+    <div class="city-operations">
+      <button class="city-operation" type="button" data-city-action="${index}" data-action-kind="army"><span class="operation-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 23h18l-1.5-7a7.5 7.5 0 0 0-15 0L7 23Z"/><path d="M5 24h22v3H5zM11 13h10M16 9v4"/></svg></span><span class="operation-copy"><b>تجهيز الجيش</b><small>${operation?.kind==='army'?opText:'لا يوجد تجهيز حالياً'}</small>${operation?.kind==='army'?`<i class="operation-meter"><em style="width:${progress}%"></em></i>`:''}</span></button>
+      <button class="city-operation" type="button" data-city-action="${index}" data-action-kind="build"><span class="operation-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 27h22M9 27V9h2v18M10 9h13M23 9v4M20 13h6M21 13l-3 5h9l-3-5M7 9l3-4 3 4M6 18h5M6 18l-2 3h7l-2-3"/></svg></span><span class="operation-copy"><b>البناء</b><small>${operation?.kind==='build'?opText:'لا يوجد بناء حالياً'}</small>${operation?.kind==='build'?`<i class="operation-meter"><em style="width:${progress}%"></em></i>`:''}</span></button>
+    </div>
+  </article>`;
+}
+function focusCity(cityName) {
+  const city=CITY_MARKERS.find(item=>item.name===cityName && (item.countryId===selectedCountry?.id || item.country===selectedCountry?.ar));
+  if(!city||!svg)return;
+  const [x,y]=project([city.lon,city.lat]);
+  const targetZoom= Math.max(overviewViewWidth/Math.min(view.w,overviewViewWidth/12),12);
+  const targetW=overviewViewWidth/Math.min(18,Math.max(12,targetZoom));
+  view={x:x-targetW/2,y:y-(targetW*view.h/view.w)/2,w:targetW,h:targetW*view.h/view.w};
+  if(typeof constrainCamera==='function')constrainCamera();
+  updateView();
+  showToast('تم الانتقال إلى '+city.name);
+}
 function showCityPanel(city) {
-  $('selectionPanel').style.cssText='';
   selectedCity=city; activePanel=null;
   $('mainPanel').hidden=true; $('bottomNav').hidden=true; $('dialogPanel').hidden=true;
   $('selectionPanel').hidden=false;
-  const production=CITY_PRODUCTION[city.name]||{key:'food',amount:20,money:15,workforce:10}; const def=RESOURCE_DEFS[production.key];
-  $('selectionPanel').innerHTML=`<div class="selection-city-head"><strong>🏙️ ${city.name}</strong><button class="panel-close" id="selectionClose">×</button></div><div class="city-summary-grid"><div class="city-summary-item happiness"><span>😊 السعادة</span><b>75%</b></div><div class="city-summary-item"><span>🏭 الإنتاج</span><b>${def.icon} +${production.amount.toLocaleString('en-US')}</b></div><div class="city-summary-item"><span>💵 الدولارات</span><b>+${(production.money||0).toLocaleString('en-US')} / يوم</b></div><div class="city-summary-item"><span>👷 القوى العاملة</span><b>+${(production.workforce||0).toLocaleString('en-US')} / يوم</b></div></div><div class="selection-actions"><button id="cityBuild">🏗 البناء</button><button id="cityArmy">⚔ تصنيع الجيش</button></div>`;
+  const previous=city.happiness??75;
+  const production=CITY_PRODUCTION[city.name]||{key:'food',amount:0,money:0,workforce:0};
+  const resource=RESOURCE_DEFS[production.key]||RESOURCE_DEFS.food;
+  $('selectionPanel').innerHTML=`<div class="selection-city-head"><strong>🏙️ ${city.name}</strong><button class="panel-close" id="selectionClose">×</button></div><div class="city-summary-grid"><div class="city-summary-item"><span>${resource.icon} ${resource.name}</span><b>+${production.amount.toLocaleString('en-US')}</b></div><div class="city-summary-item"><span>💵 الدولارات</span><b>+${(production.money||0).toLocaleString('en-US')}</b></div><div class="city-summary-item"><span>👷 القوى العاملة</span><b>${(production.workforce||0).toLocaleString('en-US')}</b></div><div class="city-summary-item"><span>👥 السكان</span><b>${((production.workforce||0)*3).toLocaleString('en-US')}</b></div><div class="city-summary-item happiness"><span>😊 السعادة</span><b>${previous}%</b></div></div><div class="selection-actions"><button id="cityBuild">🏗 البناء</button><button id="cityArmy">⚔ تجهيز الجيش</button></div>`;
   $('selectionClose').onclick=closePanels;
-  $('cityArmy').onclick=()=>showToast('تم فتح تصنيع الجيش للمدينة: '+city.name);
+  $('cityArmy').onclick=()=>showToast('تجهيز الجيش في '+city.name);
   $('cityBuild').onclick=()=>showToast('البناء في '+city.name);
 }
 function showRegionPanel(feature) {
