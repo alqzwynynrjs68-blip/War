@@ -48,6 +48,15 @@ function geometryPath(g) {
   if(g.type==='MultiPolygon') return g.coordinates.map(ringsToPath).join(' ');
   return '';
 }
+// Country outlines should trace only each polygon's exterior coastline/border.
+// Interior rings are holes (often lakes or data artifacts) and must not be
+// drawn as country-separating lines at world scale. Keep every island polygon.
+function countryOutlinePath(g) {
+  if(!g) return '';
+  if(g.type==='Polygon') return ringsToPath(g.coordinates.length?[g.coordinates[0]]:[]);
+  if(g.type==='MultiPolygon') return g.coordinates.map(poly=>ringsToPath(poly.length?[poly[0]]:[])).join(' ');
+  return '';
+}
 function addSvg(tag,attrs,parent) {
   const e=document.createElementNS(NS,tag);
   Object.entries(attrs||{}).forEach(([k,v])=>e.setAttribute(k,v));
@@ -301,7 +310,7 @@ function renderMap() {
   geo.features.forEach(feature=>{
     const id=feature.properties.iso_a3;
     if(!allCountries.some(c=>c.id===id)) return;
-    const path=addSvg('path',{d:geometryPath(feature.geometry),fill:'none',stroke:'#ffffff','stroke-width':'.55','stroke-opacity':'.62','vector-effect':'non-scaling-stroke'},countryBorderGroup);
+    const path=addSvg('path',{d:countryOutlinePath(feature.geometry),fill:'none',stroke:'#ffffff','stroke-width':'.55','stroke-opacity':'.62','vector-effect':'non-scaling-stroke'},countryBorderGroup);
     countryBorderPaths.push({id,path});
   });
   // Duplicate the complete world on both sides so crossing the date line reveals the opposite edge.
