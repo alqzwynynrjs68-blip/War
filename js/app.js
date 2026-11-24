@@ -19,6 +19,9 @@ let view = {x:0,y:0,w:1000,h:650};
 let selectedCountry = null, selectedRegion = null;
 let adminPaths = [], countryBorderPaths = [], cityMarkerNodes = [], cityMarkerLayer = null, overviewViewWidth = 222, overviewBounds = null;
 let toastTimer = null;
+let activePanel = null, diplomacyTab = 'countries', activeDiplomacyCountry = null;
+let selectedCity = null, activeDialog = null;
+const relations = {};
 
 function project([lon,lat]) { return [(lon+180)/360*1000,(90-lat)/180*650]; }
 function ringsToPath(coords) {
@@ -108,8 +111,8 @@ function chooseRegion(feature) {
   if(!country || country.id!==selectedCountry.id) {
     showToast('هذه المنطقة تتبع دولة أخرى. للعب بها ارجع إلى قائمة الدول.'); return;
   }
-  selectedRegion=feature; paintAdminRegions();
-  showToast('تم تحديد '+getRegionName(feature));
+  selectedRegion=feature; selectedCity=null; paintAdminRegions();
+  showRegionPanel(feature);
 }
 function renderAdminRegions() {
   adminGroup.innerHTML=''; adminPaths=[];
@@ -156,14 +159,16 @@ function renderCityMarkers() {
     image.src=CITY_MODEL_DATA_URI;
     image.alt=city.name+' — '+city.country;
     image.draggable=false;
-    image.style.cssText='position:absolute;width:'+CITY_MARKER_SCREEN_SIZE+'px;height:'+CITY_MARKER_SCREEN_SIZE+'px;object-fit:contain;max-width:none;pointer-events:none;user-select:none;-webkit-user-drag:none;transform:translate(-50%,-100%);display:none;z-index:4;';
+    image.style.cssText='position:absolute;width:'+CITY_MARKER_SCREEN_SIZE+'px;height:'+CITY_MARKER_SCREEN_SIZE+'px;object-fit:contain;max-width:none;pointer-events:auto;cursor:pointer;user-select:none;-webkit-user-drag:none;transform:translate(-50%,-100%);display:none;z-index:4;';
     cityMarkerLayer.appendChild(image);
+    image.addEventListener('click',e=>{e.stopPropagation();selectCity(city);});
 
     const dot=document.createElement('div');
     dot.setAttribute('aria-label',city.name+' — '+city.country);
     dot.title=city.name;
-    dot.style.cssText='position:absolute;width:'+CITY_DOT_SCREEN_SIZE+'px;height:'+CITY_DOT_SCREEN_SIZE+'px;border-radius:50%;background:#ffd76a;border:1px solid #fff;box-shadow:0 0 4px rgba(255,215,106,.8);transform:translate(-50%,-50%);pointer-events:none;display:none;z-index:3;';
+    dot.style.cssText='position:absolute;width:'+CITY_DOT_SCREEN_SIZE+'px;height:'+CITY_DOT_SCREEN_SIZE+'px;border-radius:50%;background:#ffd76a;border:1px solid #fff;box-shadow:0 0 4px rgba(255,215,106,.8);transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;display:none;z-index:3;';
     cityMarkerLayer.appendChild(dot);
+    dot.addEventListener('click',e=>{e.stopPropagation();selectCity(city);});
     cityMarkerNodes.push({image,dot,cx,cy});
   });
   updateCityMarkerSizes();
@@ -268,7 +273,7 @@ function updateCountryPopover() {
 function enterGame(countryId) {
   selectedCountry=playableCountries.find(c=>c.id===countryId);
   if(!selectedCountry) return;
-  selectedRegion=null;
+  selectedRegion=null; closePanels();
   $('welcomeScreen').hidden=true; $('countryScreen').hidden=true; $('gameScreen').hidden=false;
   $('countryPopover').hidden=true; $('countryFlagButton').setAttribute('aria-expanded','false');
   updateCountryPopover();
@@ -291,8 +296,91 @@ function renderPlayableCountryCards() {
     button.addEventListener('click',()=>enterGame(country.id)); root.appendChild(button);
   });
 }
+
+function showBottomPanel(id) {
+  activePanel=id; selectedCity=null; selectedRegion=null;
+  $('selectionPanel').hidden=true; $('dialogPanel').hidden=true;
+  $('bottomNav').hidden=false;
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.panel===id));
+  const panel=$('mainPanel'); panel.hidden=false;
+  if(id==='diplomacy') renderDiplomacy();
+  else if(id==='research') renderResearch();
+  else { panel.innerHTML=''; panel.hidden=true; }
+}
+function closePanels() {
+  activePanel=null; activeDialog=null;
+  $('mainPanel').hidden=true; $('selectionPanel').hidden=true; $('dialogPanel').hidden=true;
+  $('bottomNav').hidden=false;
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+}
+function renderDiplomacy() {
+  const panel=$('mainPanel'); panel.hidden=false;
+  if(activeDiplomacyCountry) { renderCountryDiplomacy(activeDiplomacyCountry); return; }
+  panel.innerHTML=`<div class="panel-head"><strong>الدبلوماسية</strong><button class="panel-close" data-close>×</button></div>
+    <div class="panel-tabs"><button data-dtab="countries" class="${diplomacyTab==='countries'?'chosen':''}">الدول</button><button data-dtab="messages" class="${diplomacyTab==='messages'?'chosen':''}">المحادثات</button></div>
+    <div class="panel-content" id="diplomacyContent"></div>`;
+  panel.querySelector('[data-close]').onclick=closePanels;
+  panel.querySelectorAll('[data-dtab]').forEach(b=>b.onclick=()=>{diplomacyTab=b.dataset.dtab;renderDiplomacy();});
+  const content=$('diplomacyContent');
+  if(diplomacyTab==='countries') {
+    content.innerHTML=allCountries.filter(c=>c.id!==selectedCountry.id).map(c=>`<button class="country-row" data-country="${c.id}"><span class="flag">${c.flag}</span><span>${c.ar}</span><span class="row-arrow">‹</span></button>`).join('');
+    content.querySelectorAll('[data-country]').forEach(b=>b.onclick=()=>{activeDiplomacyCountry=allCountries.find(c=>c.id===b.dataset.country);renderDiplomacy();});
+  } else {
+    content.innerHTML='<p class="empty-note">لا توجد محادثات حالياً</p>';
+  }
+}
+function renderCountryDiplomacy(country) {
+  const relation=relations[country.id]||'سلام';
+  const cities=CITY_MARKERS.filter(c=>c.country===country.ar).length;
+  const provinces=adminGeo.features.filter(f=>f.properties.shapeGroup===country.id).length;
+  $('mainPanel').innerHTML=`<div class="panel-head"><button class="back-small" id="diplomacyBack">‹</button><strong>${country.flag} ${country.ar}</strong><button class="panel-close" data-close>×</button></div>
+  <div class="country-stats"><div><small>عدد المدن</small><b>${cities}</b></div><div><small>عدد المقاطعات</small><b>${provinces||country.count}</b></div></div>
+  <div class="relation-line"><span>العلاقة الحالية</span><b>${relation}</b><button id="relationToggle">⌄</button></div>
+  <div id="relationOptions" class="relation-options" hidden>${['حرب','سلام','تجارة','مرور عسكري'].map(r=>`<button data-rel="${r}">${r}</button>`).join('')}</div>
+  <div class="country-actions"><button id="locateCountry">⌖ الموقع</button><button id="openConversation">✉ المحادثة</button></div>`;
+  $('diplomacyBack').onclick=()=>{activeDiplomacyCountry=null;renderDiplomacy();};
+  $('mainPanel').querySelector('[data-close]').onclick=closePanels;
+  $('relationToggle').onclick=()=>{$('relationOptions').hidden=!$('relationOptions').hidden;};
+  $('relationOptions').querySelectorAll('[data-rel]').forEach(b=>b.onclick=()=>{relations[country.id]=b.dataset.rel;renderCountryDiplomacy(country);});
+  $('locateCountry').onclick=()=>{const f=geo.features.find(x=>x.properties.iso_a3===country.id);if(f)fit(boundsForGeometry(f.geometry),18);showToast('تم تحديد موقع '+country.ar);};
+  $('openConversation').onclick=()=>openConversation(country);
+}
+function openConversation(country) {
+  activeDialog=country;
+  $('dialogPanel').hidden=false;
+  $('dialogPanel').innerHTML=`<div class="dialog-head"><strong>محادثة مع ${country.flag} ${country.ar}</strong><button id="dialogClose">×</button></div><div id="chatMessages" class="chat-messages"></div><form id="chatForm" class="chat-form"><input id="chatInput" placeholder="اكتب رسالة..." autocomplete="off"><button>إرسال</button></form>`;
+  $('dialogClose').onclick=()=>$('dialogPanel').hidden=true;
+  $('chatForm').onsubmit=e=>{e.preventDefault();const input=$('chatInput');if(!input.value.trim())return;const m=document.createElement('div');m.className='chat-message';m.textContent=input.value.trim();$('chatMessages').appendChild(m);input.value='';};
+}
+function renderResearch() {
+  $('mainPanel').innerHTML=`<div class="panel-head"><strong>الأبحاث</strong><button class="panel-close" data-close>×</button></div><div class="panel-content"><button class="research-choice" id="infantryChoice"><span>🪖</span><b>المشاة</b></button></div>`;
+  $('mainPanel').querySelector('[data-close]').onclick=closePanels;
+  $('infantryChoice').onclick=()=>{$('dialogPanel').hidden=false;$('dialogPanel').innerHTML=`<div class="dialog-head"><strong>🪖 المشاة</strong><button id="dialogClose">×</button></div><div class="infantry-card"><div class="infantry-figure">🪖</div><strong>جندي مشاة</strong></div>`;$('dialogClose').onclick=()=>$('dialogPanel').hidden=true;};
+}
+function selectCity(city) {
+  if(!selectedCountry || city.country!==selectedCountry.ar) {showToast('هذه المدينة لا تتبع دولتك الحالية');return;}
+  selectedCity=city; selectedRegion=null; activePanel=null;
+  $('mainPanel').hidden=true; $('bottomNav').hidden=true; $('dialogPanel').hidden=true;
+  $('selectionPanel').hidden=false;
+  $('selectionPanel').innerHTML=`<div class="selection-city-head"><strong>🏙️ ${city.name}</strong><button class="panel-close" id="selectionClose">×</button></div><div class="happiness">😊 السعادة <b>75%</b></div><div class="selection-actions"><button id="cityArmy">⚔ تصنيع جيش</button><button id="cityBuild">🏗 بناء</button></div>`;
+  $('selectionClose').onclick=closePanels;
+  $('cityArmy').onclick=()=>showToast('تم فتح تصنيع الجيش للمدينة: '+city.name);
+  $('cityBuild').onclick=()=>showToast('البناء في '+city.name);
+}
+function showRegionPanel(feature) {
+  $('mainPanel').hidden=true; $('bottomNav').hidden=true; $('dialogPanel').hidden=true;
+  $('selectionPanel').hidden=false;
+  $('selectionPanel').innerHTML=`<div class="selection-city-head"><strong>🗺️ ${getRegionName(feature)}</strong><button class="panel-close" id="selectionClose">×</button></div><div class="selection-actions"><button id="regionBuild">🏗 بناء</button></div>`;
+  $('selectionClose').onclick=closePanels;
+  $('regionBuild').onclick=()=>showToast('البناء في '+getRegionName(feature));
+}
+function wireBottomNavigation() {
+  document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>showBottomPanel(b.dataset.panel)));
+}
+
 function initInterface() {
   renderPlayableCountryCards();
+  wireBottomNavigation();
   $('startButton').addEventListener('click',()=>{$('welcomeScreen').hidden=true;$('countryScreen').hidden=false;});
   $('selectionBackButton').addEventListener('click',()=>{$('countryScreen').hidden=true;$('welcomeScreen').hidden=false;});
   $('backToCountries').addEventListener('click',returnToCountrySelection);
