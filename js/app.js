@@ -70,7 +70,7 @@ function fit(b,pad=30) {
   updateView();
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2) {
-  const minW=overviewViewWidth/9.0,maxW=overviewViewWidth/1.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
+  const minW=overviewViewWidth/13.0,maxW=overviewViewWidth/2.4,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
   view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; updateView();
 }
@@ -80,7 +80,7 @@ function updateView() {
   updateCityMarkerSizes();
   if(urbanPlanGroup) {
     const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;
-    urbanPlanGroup.style.visibility=zoomLevel>=2.2?'visible':'hidden';
+    urbanPlanGroup.style.visibility=zoomLevel>=9.0?'visible':'hidden';
   }
   // Country borders adapt smoothly to camera zoom: very thin at world overview,
   // progressively clearer at close range. non-scaling-stroke keeps the result
@@ -97,8 +97,8 @@ function updateView() {
   });
   // ADM1 province boundaries start appearing at zoom 8.0x,
   // fade in smoothly, then remain fully visible at every closer zoom level.
-  const adminZoomStart=8.0;
-  const adminZoomFull=8.2;
+  const adminZoomStart=11.0;
+  const adminZoomFull=13.0;
   const t=Math.max(0,Math.min(1,(zoomLevel-adminZoomStart)/(adminZoomFull-adminZoomStart)));
   if(adminGroup) {
     adminGroup.style.opacity=String(t);
@@ -223,9 +223,8 @@ function buildWorldCapitalMarkers() {
 }
 let CITY_MARKERS = [...IRAQ_CITY_MARKERS];
 const CITY_DOTS_ZOOM_LEVEL = 2.40; // تبدأ نقاط المدن عند 2.40x
-const CITY_MODELS_ZOOM_LEVEL = 7.0; // تتحول نقاط المدن إلى مجسمات عند 7.0x
+const CITY_MODELS_ZOOM_LEVEL = 9.0; // تختفي نقاط المدن عند 9.0x ويظهر مخطط المدينة
 const CITY_DOT_SCREEN_SIZE = 5; // قطر النقطة بالبكسل
-const CITY_MODEL_SCREEN_SIZE = 20; // عرض مجسم المدينة بالبكسل
 function renderCityMarkers() {
   if(!cityMarkerLayer) return;
   cityMarkerLayer.innerHTML=''; cityMarkerNodes=[];
@@ -236,14 +235,7 @@ function renderCityMarkers() {
     dot.title=city.name;
     dot.style.cssText='position:absolute;width:'+CITY_DOT_SCREEN_SIZE+'px;height:'+CITY_DOT_SCREEN_SIZE+'px;border-radius:50%;background:#ffd76a;border:1px solid #fff;box-shadow:0 0 4px rgba(255,215,106,.8);transform:translate(-50%,-50%);pointer-events:none;display:none;z-index:3;';
     cityMarkerLayer.appendChild(dot);
-    const model=document.createElement('img');
-    model.src='assets/city-model.png';
-    model.alt='';
-    model.setAttribute('aria-hidden','true');
-    model.draggable=false;
-    model.style.cssText='position:absolute;width:'+CITY_MODEL_SCREEN_SIZE+'px;height:auto;transform:translate(-50%,-50%);pointer-events:none;display:none;z-index:4;';
-    cityMarkerLayer.appendChild(model);
-    cityMarkerNodes.push({dot,model,cx,cy});
+    cityMarkerNodes.push({dot,cx,cy});
   });
   updateCityMarkerSizes();
 }
@@ -256,16 +248,12 @@ function updateCityMarkerSizes() {
   const offsetY=(rect.height-view.h*scale)/2;
   const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;
   const showDots=zoomLevel>=CITY_DOTS_ZOOM_LEVEL && zoomLevel<CITY_MODELS_ZOOM_LEVEL;
-  const showModels=zoomLevel>=CITY_MODELS_ZOOM_LEVEL;
-  cityMarkerNodes.forEach(({dot,model,cx,cy})=>{
+  cityMarkerNodes.forEach(({dot,cx,cy})=>{
     const left=(offsetX+(cx-view.x)*scale)+'px';
     const top=(offsetY+(cy-view.y)*scale)+'px';
     dot.style.left=left;
     dot.style.top=top;
-    model.style.left=left;
-    model.style.top=top;
     dot.style.display=showDots?'block':'none';
-    model.style.display=showModels?'block':'none';
   });
 }
 
@@ -273,7 +261,7 @@ function renderMap() {
   const map=$('map'); map.innerHTML='';
   svg=addSvg('svg',{viewBox:'0 0 1000 650',role:'img','aria-label':'خريطة العالم','preserveAspectRatio':'xMidYMid meet'},map);
   cityMarkerLayer=document.createElement('div');
-  cityMarkerLayer.setAttribute('aria-label','نقاط مواقع المدن');
+  cityMarkerLayer.setAttribute('aria-label','علامات مواقع المدن');
   cityMarkerLayer.style.cssText='position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:5;';
   map.appendChild(cityMarkerLayer);
   addSvg('rect',{x:0,y:0,width:1000,height:650,fill:'#091321'},svg);
