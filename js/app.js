@@ -1,19 +1,19 @@
 /* WORLD DOMINION - Welcome, fixed playable-country selection, fullscreen strategy map */
-const allCountries = [
-  {id:'IRQ',en:'Iraq',ar:'العراق',flag:'🇮🇶',count:18,playable:true},
-  {id:'SAU',en:'Saudi Arabia',ar:'السعودية',flag:'🇸🇦',count:13,playable:true},
-  {id:'IRN',en:'Iran',ar:'إيران',flag:'🇮🇷',count:31,playable:true},
-  {id:'KWT',en:'Kuwait',ar:'الكويت',flag:'🇰🇼',count:6},
-  {id:'QAT',en:'Qatar',ar:'قطر',flag:'🇶🇦',count:8},
-  {id:'BHR',en:'Bahrain',ar:'البحرين',flag:'🇧🇭',count:4},
-  {id:'ARE',en:'United Arab Emirates',ar:'الإمارات',flag:'🇦🇪',count:7},
-  {id:'OMN',en:'Oman',ar:'عُمان',flag:'🇴🇲',count:7}
-];
-const playableCountries = allCountries.filter(c=>c.playable);
+function flagFromIso2(code) {
+  if(!code || code.length!==2) return '🌐';
+  return String.fromCodePoint(...[...code.toUpperCase()].map(ch=>127397+ch.charCodeAt(0)));
+}
+const regionNamesArabic = typeof Intl!=='undefined' && Intl.DisplayNames ? new Intl.DisplayNames(['ar'],{type:'region'}) : null;
+const allCountries = (window.WD_COUNTRY_LIST||[]).map(p=>{
+  const ar=p.ar || (p.iso2 && regionNamesArabic ? regionNamesArabic.of(p.iso2) : p.en);
+  return {id:p.id,en:p.en||p.id,ar:ar||p.en||p.id,flag:flagFromIso2(p.iso2),iso2:p.iso2,count:p.count||0,playable:true};
+}).sort((a,b)=>a.id==='IRQ'?-1:b.id==='IRQ'?1:a.ar.localeCompare(b.ar,'ar'));
+const playableCountries = allCountries;
 const $ = id => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
-const geo = window.WD_COUNTRIES;
-const adminGeo = window.WD_ADMIN_REGIONS;
+let geo = window.WD_COUNTRIES || null;
+let adminGeo = window.WD_ADMIN_REGIONS || null;
+let worldDataLoadPromise = null;
 let svg, baseGroup, adminGroup, urbanPlanGroup, countryBorderGroup;
 let view = {x:0,y:0,w:1000,h:650};
 let selectedCountry = null, selectedRegion = null;
@@ -130,7 +130,7 @@ function chooseRegion(feature) {
     showToast('هذه المنطقة تتبع دولة أخرى. للعب بها ارجع إلى قائمة الدول.'); return;
   }
   selectedRegion=feature; selectedCity=null; paintAdminRegions();
-  const city=CITY_MARKERS.find(item=>item.country===selectedCountry.ar && pointInFeature([item.lon,item.lat],feature));
+  const city=CITY_MARKERS.find(item=>(item.countryId===selectedCountry.id || item.country===selectedCountry.ar) && pointInFeature([item.lon,item.lat],feature));
   if(city) showCityPanel(city); else showRegionPanel(feature);
 }
 function pointInRing(point,ring) {
@@ -147,7 +147,7 @@ function pointInFeature(point,feature) {
   return polygons.some(poly=>pointInRing(point,poly[0])&&!poly.slice(1).some(hole=>pointInRing(point,hole)));
 }
 function findCityRegion(city) {
-  const country=allCountries.find(c=>c.ar===city.country);
+  const country=allCountries.find(c=>c.id===city.countryId || c.ar===city.country);
   if(!country||!adminGeo||!Array.isArray(adminGeo.features)) return null;
   return adminGeo.features.find(f=>f.properties?.shapeGroup===country.id&&pointInFeature([city.lon,city.lat],f))||null;
 }
@@ -165,6 +165,9 @@ function renderUrbanPlans() {
     const clipId='urban-plan-clip-'+index;
     const clip=addSvg('clipPath',{id:clipId,clipPathUnits:'userSpaceOnUse'},defs);
     addSvg('path',{d:geometryPath(feature.geometry)},clip);
+    if(city.countryId!==selectedCountry?.id) {
+      addSvg('rect',{x:(cx-width/2).toFixed(4),y:(cy-height/2).toFixed(4),width:width.toFixed(4),height:height.toFixed(4),fill:'#e6e2d8','fill-opacity':'.92','clip-path':`url(#${clipId})`,'pointer-events':'none'},urbanPlanGroup);
+    }
     const image=addSvg('image',{
       href:'assets/city-urban-plan.png',x:(cx-width/2).toFixed(4),y:(cy-height/2).toFixed(4),
       width:width.toFixed(4),height:height.toFixed(4),'preserveAspectRatio':'xMidYMid meet',
@@ -189,21 +192,22 @@ function renderAdminRegions() {
 }
 // City miniatures use a screen-space HTML overlay, not SVG map units.
 // This keeps their visible size absolutely constant regardless of map zoom.
-const CITY_MARKERS = [
-  {name:'مدينة الكويت',country:'الكويت',lon:47.9783,lat:29.3759},
-  {name:'مسقط',country:'عُمان',lon:58.4059,lat:23.5880},
-  {name:'المنامة',country:'البحرين',lon:50.5860,lat:26.2235},
-  {name:'الدوحة',country:'قطر',lon:51.5310,lat:25.2854},
-  {name:'بغداد',country:'العراق',lon:44.3661,lat:33.3152},
-  {name:'النجف',country:'العراق',lon:44.0165,lat:32.0000},
-  {name:'البصرة',country:'العراق',lon:47.7804,lat:30.5085},
-  {name:'الرمادي',country:'العراق',lon:43.3000,lat:33.4200},
-  {name:'الموصل',country:'العراق',lon:43.1300,lat:36.3400},
-  {name:'السليمانية',country:'العراق',lon:45.4300,lat:35.5600},
-  {name:'الكوت',country:'العراق',lon:45.8200,lat:32.5100},
-  {name:'الرياض',country:'السعودية',lon:46.6753,lat:24.7136},
-  {name:'طهران',country:'إيران',lon:51.3890,lat:35.6892}
+const IRAQ_CITY_MARKERS = [
+  {name:'بغداد',country:'العراق',countryId:'IRQ',lon:44.3661,lat:33.3152},
+  {name:'النجف',country:'العراق',countryId:'IRQ',lon:44.0165,lat:32.0000},
+  {name:'البصرة',country:'العراق',countryId:'IRQ',lon:47.7804,lat:30.5085},
+  {name:'الرمادي',country:'العراق',countryId:'IRQ',lon:43.3000,lat:33.4200},
+  {name:'الموصل',country:'العراق',countryId:'IRQ',lon:43.1300,lat:36.3400},
+  {name:'السليمانية',country:'العراق',countryId:'IRQ',lon:45.4300,lat:35.5600},
+  {name:'الكوت',country:'العراق',countryId:'IRQ',lon:45.8200,lat:32.5100}
 ];
+function buildWorldCapitalMarkers() {
+  return (window.WD_CAPITALS||[]).filter(c=>c.country!=='IRQ').map(c=>{
+    const country=allCountries.find(x=>x.id===c.country);
+    return {name:c.name,country:country?.ar||country?.en||c.country,countryId:c.country,lon:c.lon,lat:c.lat,isCapital:true};
+  });
+}
+let CITY_MARKERS = [...IRAQ_CITY_MARKERS];
 const CITY_DOTS_ZOOM_LEVEL = 1.50; // تبدأ نقاط المدن عند 1.50x
 const CITY_DOTS_HIDE_ZOOM_LEVEL = 2.40; // تختفي النقاط عند 2.40x
 const CITY_DOT_SCREEN_SIZE = 5; // قطر النقطة بالبكسل
@@ -239,7 +243,7 @@ function updateCityMarkerSizes() {
 
 function renderMap() {
   const map=$('map'); map.innerHTML='';
-  svg=addSvg('svg',{viewBox:'0 0 1000 650',role:'img','aria-label':'خريطة الدول الثماني','preserveAspectRatio':'xMidYMid meet'},map);
+  svg=addSvg('svg',{viewBox:'0 0 1000 650',role:'img','aria-label':'خريطة العالم','preserveAspectRatio':'xMidYMid meet'},map);
   cityMarkerLayer=document.createElement('div');
   cityMarkerLayer.setAttribute('aria-label','نقاط مواقع المدن');
   cityMarkerLayer.style.cssText='position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:5;';
@@ -307,11 +311,36 @@ function updateCountryPopover() {
   $('topCountryFlag').textContent=selectedCountry.flag;
   $('popoverFlag').textContent=selectedCountry.flag;
   $('popoverCountryName').textContent=selectedCountry.ar;
-  $('popoverCityCount').textContent=CITY_MARKERS.filter(city=>city.country===selectedCountry.ar).length;
+  $('popoverCityCount').textContent=CITY_MARKERS.filter(city=>city.countryId===selectedCountry.id || city.country===selectedCountry.ar).length;
 }
-function enterGame(countryId) {
-  selectedCountry=playableCountries.find(c=>c.id===countryId);
-  if(!selectedCountry) return;
+function loadWorldData() {
+  if(geo && adminGeo && window.WD_CAPITALS) return Promise.resolve();
+  if(worldDataLoadPromise) return worldDataLoadPromise;
+  const loadScript=src=>new Promise((resolve,reject)=>{
+    const script=document.createElement('script'); script.src=src;
+    script.onload=resolve; script.onerror=()=>reject(new Error('تعذر تحميل '+src));
+    document.head.appendChild(script);
+  });
+  worldDataLoadPromise=Promise.all([
+    loadScript('js/map-data.js'),loadScript('js/admin-data.js'),loadScript('js/capital-data.js')
+  ]).then(()=>{
+    geo=window.WD_COUNTRIES; adminGeo=window.WD_ADMIN_REGIONS;
+    CITY_MARKERS=[...IRAQ_CITY_MARKERS,...buildWorldCapitalMarkers()];
+    if(!geo||!Array.isArray(geo.features)||!adminGeo||!Array.isArray(adminGeo.features)||!Array.isArray(window.WD_CAPITALS))
+      throw new Error('بيانات خريطة العالم غير مكتملة');
+  }).catch(error=>{worldDataLoadPromise=null;throw error;});
+  return worldDataLoadPromise;
+}
+
+async function enterGame(countryId) {
+  const country=playableCountries.find(c=>c.id===countryId);
+  if(!country) return;
+  const cards=$('playableCountries').querySelectorAll('button'); cards.forEach(b=>b.disabled=true);
+  const loading=$('countryLoading'); if(loading){loading.hidden=false;loading.textContent='جاري تحميل خريطة العالم…';}
+  try { await loadWorldData(); }
+  catch(error) { cards.forEach(b=>b.disabled=false); if(loading){loading.hidden=false;loading.textContent='تعذر تحميل الخريطة. تحقق من ملفات اللعبة ثم أعد المحاولة.';} console.error(error); return; }
+  if(loading) loading.hidden=true;
+  selectedCountry=country;
   startNewCampaignClock();
   selectedRegion=null; closePanels();
   $('welcomeScreen').hidden=true; $('countryScreen').hidden=true; $('gameScreen').hidden=false;
@@ -590,9 +619,9 @@ function initInterface() {
     }
   });
 }
-if(!geo||!Array.isArray(geo.features)||!adminGeo||!Array.isArray(adminGeo.features)) {
-  console.error('WORLD DOMINION: map/admin data files are missing or invalid.');
-  $('startButton').addEventListener('click',()=>showToast('تعذّر تحميل بيانات الخريطة. تأكد من وجود ملفات البيانات الأصلية.'));
+if(!Array.isArray(window.WD_COUNTRY_LIST) || !window.WD_COUNTRY_LIST.length) {
+  console.error('WORLD DOMINION: country-list.js is missing or invalid.');
+  $('startButton').addEventListener('click',()=>alert('تعذّر تحميل قائمة الدول. تأكد من وجود ملفات البيانات.'));
 } else {
   initInterface();
 }
