@@ -17,7 +17,7 @@ let worldDataLoadPromise = null;
 let svg, baseGroup, adminGroup, urbanPlanGroup, countryBorderGroup;
 let view = {x:0,y:0,w:1000,h:650};
 let selectedCountry = null, selectedRegion = null;
-let adminPaths = [], countryBorderPaths = [], cityMarkerNodes = [], cityMarkerLayer = null, overviewViewWidth = 222, overviewBounds = null;
+let adminPaths = [], countryBorderPaths = [], wrapCopies = [], cityMarkerNodes = [], cityMarkerLayer = null, overviewViewWidth = 222, overviewBounds = null;
 let toastTimer = null;
 let activePanel = null, diplomacyTab = 'countries', activeDiplomacyCountry = null;
 let selectedCity = null, activeDialog = null, activeConversationCountry = null;
@@ -69,10 +69,15 @@ function fit(b,pad=30) {
   view={x:b.x-(1000-w*s)/2/s,y:b.y-(650-h*s)/2/s,w:1000/s,h:650/s};
   updateView();
 }
+function constrainCamera() {
+  // Wrap longitude continuously while keeping the camera inside the north/south map limits.
+  view.x=((view.x%1000)+1000)%1000;
+  view.y=Math.max(0,Math.min(650-view.h,view.y));
+}
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2) {
   const minW=overviewViewWidth/28.0,maxW=overviewViewWidth/3.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
-  view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; updateView();
+  view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; constrainCamera(); updateView();
 }
 function updateView() {
   if(!svg) return;
@@ -246,7 +251,8 @@ function updateCityMarkerSizes() {
   const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;
   const showDots=zoomLevel>=CITY_DOTS_ZOOM_LEVEL && zoomLevel<CITY_MODELS_ZOOM_LEVEL;
   cityMarkerNodes.forEach(({dot,cx,cy})=>{
-    const left=(offsetX+(cx-view.x)*scale)+'px';
+    const wrappedCx=cx+Math.round((view.x+view.w/2-cx)/1000)*1000;
+    const left=(offsetX+(wrappedCx-view.x)*scale)+'px';
     const top=(offsetY+(cy-view.y)*scale)+'px';
     dot.style.left=left;
     dot.style.top=top;
@@ -284,6 +290,19 @@ function renderMap() {
     const path=addSvg('path',{d:geometryPath(feature.geometry),fill:'none',stroke:'#ffffff','stroke-width':'.55','stroke-opacity':'.62','vector-effect':'non-scaling-stroke'},countryBorderGroup);
     countryBorderPaths.push({id,path});
   });
+  // Duplicate the complete world on both sides so crossing the date line reveals the opposite edge.
+  wrapCopies=[];
+  [baseGroup,adminGroup,countryBorderGroup,urbanPlanGroup].forEach((group,index)=>{
+    const left=group.cloneNode(true),right=group.cloneNode(true);
+    left.setAttribute('transform','translate(-1000 0)');
+    right.setAttribute('transform','translate(1000 0)');
+    [left,right].forEach(copy=>{
+      copy.querySelectorAll('.admin-shape').forEach((path,i)=>path.addEventListener('click',e=>{e.stopPropagation();if(selectedCountry&&adminPaths[i])chooseRegion(adminPaths[i].feature);}));
+      copy.querySelectorAll('.country-shape').forEach(path=>path.addEventListener('click',()=>{if(selectedCountry&&path.getAttribute('data-id')!==selectedCountry.id)showToast('لا يمكنك تغيير دولتك أثناء اللعب. استخدم زر الرجوع.');}));
+    });
+    svg.appendChild(left); svg.appendChild(right);
+    wrapCopies.push({index,left,right});
+  });
   const allBounds=geo.features.filter(f=>allCountries.some(c=>c.id===f.properties.iso_a3)).map(f=>boundsForGeometry(f.geometry));
   overviewBounds=unionBounds(allBounds); fit(overviewBounds,30); overviewViewWidth=view.w;
   paintCountries(); paintAdminRegions();
@@ -304,7 +323,7 @@ function renderMap() {
       const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
       if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
       const r=svg.getBoundingClientRect();
-      view.x=drag.vx-dx/r.width*view.w; view.y=drag.vy-dy/r.height*view.h; updateView();
+      view.x=drag.vx-dx/r.width*view.w; view.y=drag.vy-dy/r.height*view.h; constrainCamera(); updateView();
     } else if(pointers.size===2){
       const a=[...pointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
       if(lastDistance>0){
@@ -638,3 +657,6 @@ if(!Array.isArray(window.WD_COUNTRY_LIST) || !window.WD_COUNTRY_LIST.length) {
 } else {
   initInterface();
 }
+  wrapCopies.forEach(copy=>{
+    if(copy.index===1){copy.left.style.opacity=String(t);copy.right.style.opacity=String(t);copy.left.style.display=t<.015?'none':'inline';copy.right.style.display=t<.015?'none':'inline';}
+  });
