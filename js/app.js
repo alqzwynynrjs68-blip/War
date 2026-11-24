@@ -14,7 +14,7 @@ const $ = id => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
 const geo = window.WD_COUNTRIES;
 const adminGeo = window.WD_ADMIN_REGIONS;
-let svg, baseGroup, adminGroup, countryBorderGroup;
+let svg, baseGroup, adminGroup, urbanPlanGroup, countryBorderGroup;
 let view = {x:0,y:0,w:1000,h:650};
 let selectedCountry = null, selectedRegion = null;
 let adminPaths = [], countryBorderPaths = [], cityMarkerNodes = [], cityMarkerLayer = null, overviewViewWidth = 222, overviewBounds = null;
@@ -65,6 +65,10 @@ function updateView() {
   if(!svg) return;
   svg.setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`);
   updateCityMarkerSizes();
+  if(urbanPlanGroup) {
+    const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;
+    urbanPlanGroup.style.visibility=zoomLevel>=2.2?'visible':'hidden';
+  }
   // ADM1 lines are hidden at the full Gulf overview and fade in as the user zooms closer.
   const hideAt=overviewViewWidth*.985, fullAt=overviewViewWidth*.70;
   const t=Math.max(0,Math.min(1,(hideAt-view.w)/(hideAt-fullAt)));
@@ -114,6 +118,46 @@ function chooseRegion(feature) {
   }
   selectedRegion=feature; selectedCity=null; paintAdminRegions();
   showRegionPanel(feature);
+}
+function pointInRing(point,ring) {
+  const [x,y]=point; let inside=false;
+  for(let i=0,j=ring.length-1;i<ring.length;j=i++) {
+    const [xi,yi]=ring[i], [xj,yj]=ring[j];
+    if(((yi>y)!==(yj>y)) && x<(xj-xi)*(y-yi)/(yj-yi)+xi) inside=!inside;
+  }
+  return inside;
+}
+function pointInFeature(point,feature) {
+  const g=feature.geometry; if(!g) return false;
+  const polygons=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];
+  return polygons.some(poly=>pointInRing(point,poly[0])&&!poly.slice(1).some(hole=>pointInRing(point,hole)));
+}
+function findCityRegion(city) {
+  const country=allCountries.find(c=>c.ar===city.country);
+  if(!country||!adminGeo||!Array.isArray(adminGeo.features)) return null;
+  return adminGeo.features.find(f=>f.properties?.shapeGroup===country.id&&pointInFeature([city.lon,city.lat],f))||null;
+}
+function renderUrbanPlans() {
+  if(!urbanPlanGroup) return;
+  urbanPlanGroup.innerHTML='';
+  const defs=addSvg('defs',{},urbanPlanGroup);
+  const aspect=1076/741;
+  CITY_MARKERS.forEach((city,index)=>{
+    const feature=findCityRegion(city); if(!feature) return;
+    const b=boundsForGeometry(feature.geometry);
+    const width=Math.min(b.w*.84,b.h*.84*aspect),height=width/aspect;
+    if(!(width>0&&height>0)) return;
+    const [cx,cy]=project([city.lon,city.lat]);
+    const clipId='urban-plan-clip-'+index;
+    const clip=addSvg('clipPath',{id:clipId,clipPathUnits:'userSpaceOnUse'},defs);
+    addSvg('path',{d:geometryPath(feature.geometry)},clip);
+    const image=addSvg('image',{
+      href:'assets/city-urban-plan.png',x:(cx-width/2).toFixed(4),y:(cy-height/2).toFixed(4),
+      width:width.toFixed(4),height:height.toFixed(4),'preserveAspectRatio':'xMidYMid meet',
+      'clip-path':`url(#${clipId})`,'pointer-events':'none',class:'urban-plan-image',
+      'aria-hidden':'true'
+    },urbanPlanGroup);
+  });
 }
 function renderAdminRegions() {
   adminGroup.innerHTML=''; adminPaths=[];
@@ -220,6 +264,8 @@ function renderMap() {
     });
   });
   renderAdminRegions();
+  urbanPlanGroup=addSvg('g',{'pointer-events':'none','aria-hidden':'true'},svg);
+  renderUrbanPlans();
   countryBorderPaths=[];
   geo.features.forEach(feature=>{
     const id=feature.properties.iso_a3;
