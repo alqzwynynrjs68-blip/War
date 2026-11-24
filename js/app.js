@@ -70,7 +70,11 @@ function fit(b,pad=30) {
   updateView();
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2) {
-  const minW=.015,maxW=3000,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
+  // Keep the playable camera range fixed between 1.0x and 5.0x.
+  // overviewViewWidth represents the initial world-fit width (1.0x).
+  const maxW=overviewViewWidth>0?overviewViewWidth:view.w;
+  const minW=maxW/5;
+  const nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
   view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; updateView();
 }
@@ -95,11 +99,9 @@ function updateView() {
     path.setAttribute('stroke-width',width.toFixed(3));
     path.setAttribute('stroke-opacity',opacity.toFixed(3));
   });
-  // ADM1 province boundaries start appearing at zoom 3.2x,
-  // fade in smoothly, then remain fully visible at every closer zoom level.
-  const adminZoomStart=3.2;
-  const adminZoomFull=3.6;
-  const t=Math.max(0,Math.min(1,(zoomLevel-adminZoomStart)/(adminZoomFull-adminZoomStart)));
+  // ADM1 province boundaries become visible at exactly 4.0x.
+  // They remain fully visible at closer zoom levels.
+  const t=zoomLevel>=4.0?1:0;
   if(adminGroup) {
     adminGroup.style.opacity=String(t);
     adminGroup.style.visibility=t<.015?'hidden':'visible';
