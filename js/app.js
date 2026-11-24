@@ -94,7 +94,7 @@ function scheduleViewUpdate() {
   viewRenderFrame=requestAnimationFrame(()=>{viewRenderFrame=0;updateView();});
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2,defer=false) {
-  const minW=overviewViewWidth/33.0,maxW=overviewViewWidth/7.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
+  const minW=overviewViewWidth/33.0,maxW=overviewViewWidth/5.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
   view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; constrainCamera();
   if(defer) scheduleViewUpdate(); else updateView();
