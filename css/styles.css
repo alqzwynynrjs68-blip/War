@@ -363,6 +363,6 @@
 }
 
 /* Photo banner for the infantry research title (real soldiers, not the unit logo). */
-.infantry-tree-title{position:relative;isolation:isolate;min-height:44px;min-width:190px;justify-content:flex-start;padding:8px 13px;border:1px solid #9b8052;border-radius:9px;overflow:hidden;background:linear-gradient(90deg,rgba(8,17,27,.90),rgba(8,17,27,.45)),url('../assets/infantry-banner.jpg') center 43%/cover no-repeat;box-shadow:0 2px 9px #0007,inset 0 1px #ffffff25}
+.infantry-tree-title{position:relative;isolation:isolate;min-height:44px;min-width:190px;justify-content:flex-start;padding:8px 13px;border:1px solid #9b8052;border-radius:9px;overflow:hidden;background:linear-gradient(90deg,rgba(8,17,27,.90),rgba(8,17,27,.45)),url('../assets/infantry-reference.jpeg') center 43%/cover no-repeat;box-shadow:0 2px 9px #0007,inset 0 1px #ffffff25}
 .infantry-tree-title strong{position:relative;z-index:1;color:#fff1d2;text-shadow:0 1px 4px #000,0 1px 8px #000;font-size:13px}
 @media(max-width:700px){.infantry-tree-title{min-width:155px;min-height:38px;padding:6px 9px}.infantry-tree-title strong{font-size:11px}}
