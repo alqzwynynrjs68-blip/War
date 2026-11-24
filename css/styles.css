@@ -255,3 +255,15 @@
 .world-wrap-toggle span{font-size:17px;line-height:1;color:#d9bd82}
 .world-wrap-toggle.is-off{border-color:#4b9b79;color:#b9e8d0;background:#102b25ed}
 .world-wrap-toggle:active{transform:translateY(1px)}
+
+/* City GPS focus and consistent city-detail action artwork */
+.focused-city-ring{position:absolute;width:48px;height:48px;transform:translate(-50%,-50%);border:3px solid #ffe08a;border-radius:50%;box-shadow:0 0 0 5px #f2bd4b35,0 0 22px 8px #ffd66b99;z-index:8;pointer-events:none;animation:focusedCityPulse 1.35s ease-in-out infinite;display:grid;place-items:center}
+.focused-city-ring span{width:9px;height:9px;border-radius:50%;background:#fff4c2;box-shadow:0 0 10px 4px #ffdc76}
+@keyframes focusedCityPulse{0%,100%{scale:1;opacity:1}50%{scale:1.22;opacity:.78}}
+.city-operation .operation-icon{filter:none!important;opacity:1!important;visibility:visible!important}
+.city-operation .operation-icon svg{display:block;visibility:visible;opacity:1}
+.city-detail-actions{gap:7px;margin-top:2px}
+.selection-operation{min-height:54px;padding:7px!important}
+.selection-operation .operation-icon{width:36px;height:36px;flex-basis:36px}
+.selection-operation .operation-copy b{font-size:11px}
+.selection-operation .operation-copy small{font-size:9px}
