@@ -629,13 +629,17 @@ function renderInfantryResearch() {
       <button class="research-tab" type="button" data-research-tab="second"><span class="research-tab-image" aria-hidden="true">▧</span><b>البحث الثاني</b></button>
     </div>
     <div class="infantry-tree-toolbar">
-      <div class="infantry-tree-title"><img src="assets/infantry-icon.png" alt=""><strong>شجرة أبحاث المشاة</strong></div>
       <div class="infantry-calendar"><span class="calendar-smile">📅</span><span>تقويم الحملة</span><b>اليوم ${day} / 50</b></div>
+      <div class="infantry-tree-title"><img src="assets/infantry-icon.png" alt=""><strong>شجرة أبحاث المشاة</strong></div>
     </div>
     <div class="infantry-tree-scroll" dir="rtl" aria-label="شجرة أبحاث المشاة">
-      <div class="infantry-tree-columns">${branches.map((branch,index)=>`<section class="infantry-tree-branch" data-branch="${branch.id}">
-        <h3>${branch.name}</h3><div class="infantry-tree-nodes">${Array.from({length:12},(_,i)=>{const d=i+1,has=branch.days.includes(d);return `<div class="infantry-tree-step"><span class="tree-day-label">${d}</span><button type="button" class="infantry-tech-node ${has?'has-tech':'empty-tech'} ${d===1&&index===0?'first-empty-node':''}" data-tech-branch="${branch.id}" data-tech-day="${d}" aria-label="${has?`بحث ${branch.name} اليوم ${d}`:`موضع بحث فارغ اليوم ${d}`}" ${has?'':'disabled'}>${has?`<img src="assets/infantry-icon.png" alt="">`:'<span></span>'}</button>${d<12?'<i class="infantry-tree-connector"></i>':''}</div>`;}).join('')}</div>
-      </section>`).join('')}</div>
+      <div class="infantry-tree-grid">
+        <div class="infantry-tree-grid-head"><span class="day-head">اليوم</span>${branches.map(b=>`<strong>${b.name}</strong>`).join('')}</div>
+        ${Array.from({length:50},(_,i)=>{const d=i+1;return `<div class="infantry-tree-day-row ${d%2?'day-light':'day-dark'}" data-day-row="${d}">
+          <div class="infantry-day-number">${d}</div>
+          ${branches.map(branch=>{const has=branch.days.includes(d);return `<div class="infantry-tree-cell"><span class="infantry-tree-line"></span>${has?`<button type="button" class="infantry-tech-node has-tech ${d===1?'day-one-tech':''}" data-tech-branch="${branch.id}" data-tech-day="${d}" aria-label="بحث ${branch.name} اليوم ${d}"><img src="assets/infantry-icon.png" alt=""></button>`:''}</div>`;}).join('')}
+        </div>`;}).join('')}
+      </div>
     </div>`;
   panel.querySelector('[data-close]').onclick=closePanels;
   panel.querySelectorAll('[data-research-tab]').forEach(tab=>tab.onclick=()=>{
