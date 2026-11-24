@@ -18,6 +18,8 @@ let svg, baseGroup, adminGroup, urbanPlanGroup, countryBorderGroup;
 let view = {x:0,y:0,w:1000,h:650};
 let selectedCountry = null, selectedRegion = null;
 let adminPaths = [], countryBorderPaths = [], wrapCopies = [], cityMarkerNodes = [], cityMarkerLayer = null, overviewViewWidth = 222, overviewBounds = null;
+let worldWrapEnabled = true;
+try { worldWrapEnabled = localStorage.getItem('wd-world-wrap') !== 'off'; } catch (_) {}
 let toastTimer = null;
 let viewRenderFrame = 0, lastStyledZoom = null, lastStyledCountry = null;
 let activePanel = null, diplomacyTab = 'countries', activeDiplomacyCountry = null;
@@ -81,8 +83,10 @@ function fit(b,pad=30) {
   updateView();
 }
 function constrainCamera() {
-  // Wrap longitude continuously; keep a small safety margin at both polar edges.
-  view.x=((view.x%1000)+1000)%1000;
+  // With wrapping enabled, longitude loops continuously. When disabled, clamp
+  // the camera to the single world copy and avoid rendering duplicate worlds.
+  if(worldWrapEnabled) view.x=((view.x%1000)+1000)%1000;
+  else view.x=Math.max(0,Math.min(Math.max(0,1000-view.w),view.x));
   const verticalMargin=6.0;
   const minY=verticalMargin;
   const maxY=650-view.h-verticalMargin;
@@ -123,6 +127,12 @@ function updateView() {
     });
     if(urbanPlanGroup) urbanPlanGroup.style.visibility=zoomLevel>=14.5?'visible':'hidden';
     const t=zoomLevel>=28.0?1:0;
+    wrapCopies.forEach(copy=>{
+      if(copy.index===1){
+        copy.left.style.opacity=String(t); copy.right.style.opacity=String(t);
+        copy.left.style.display=t<.015?'none':'inline'; copy.right.style.display=t<.015?'none':'inline';
+      }
+    });
     if(adminGroup) {
       adminGroup.style.opacity=String(t);
       adminGroup.style.visibility=t<.015?'hidden':'visible';
@@ -283,13 +293,56 @@ function updateCityMarkerSizes() {
   const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;
   const showDots=zoomLevel>=CITY_DOTS_ZOOM_LEVEL && zoomLevel<CITY_MODELS_ZOOM_LEVEL;
   cityMarkerNodes.forEach(({dot,cx,cy})=>{
-    const wrappedCx=cx+Math.round((view.x+view.w/2-cx)/1000)*1000;
+    const wrappedCx=worldWrapEnabled?cx+Math.round((view.x+view.w/2-cx)/1000)*1000:cx;
     const left=(offsetX+(wrappedCx-view.x)*scale)+'px';
     const top=(offsetY+(cy-view.y)*scale)+'px';
     dot.style.left=left;
     dot.style.top=top;
     dot.style.display=showDots?'block':'none';
   });
+}
+
+function createWorldWrapCopies() {
+  if(!svg || wrapCopies.length) return;
+  [baseGroup,adminGroup,countryBorderGroup,urbanPlanGroup].forEach((group,index)=>{
+    const left=group.cloneNode(true),right=group.cloneNode(true);
+    left.setAttribute('transform','translate(-1000 0)');
+    right.setAttribute('transform','translate(1000 0)');
+    [left,right].forEach(copy=>{
+      copy.querySelectorAll('.admin-shape').forEach((path,i)=>path.addEventListener('click',e=>{e.stopPropagation();if(selectedCountry&&adminPaths[i])chooseRegion(adminPaths[i].feature);}));
+      copy.querySelectorAll('.country-shape').forEach(path=>path.addEventListener('click',()=>{if(selectedCountry&&path.getAttribute('data-id')!==selectedCountry.id)showToast('لا يمكنك تغيير دولتك أثناء اللعب. استخدم زر الرجوع.');}));
+    });
+    svg.appendChild(left); svg.appendChild(right);
+    wrapCopies.push({index,left,right});
+  });
+}
+function setWorldWrapEnabled(enabled) {
+  worldWrapEnabled=!!enabled;
+  try { localStorage.setItem('wd-world-wrap',worldWrapEnabled?'on':'off'); } catch (_) {}
+  if(worldWrapEnabled) createWorldWrapCopies();
+  else {
+    wrapCopies.forEach(copy=>{copy.left.remove();copy.right.remove();});
+    wrapCopies=[];
+  }
+  constrainCamera();
+  updateView();
+  updateWorldWrapButton();
+  showToast(worldWrapEnabled?'تم تشغيل الانتقال المستمر للخريطة':'تم إيقاف الانتقال المستمر لتخفيف حمل الرسم');
+}
+function updateWorldWrapButton() {
+  const button=$('worldWrapToggle');
+  if(!button) return;
+  button.setAttribute('aria-pressed',String(worldWrapEnabled));
+  button.innerHTML=`<span aria-hidden="true">↔</span><b>الالتفاف ${worldWrapEnabled?'مفعّل':'متوقف'}</b>`;
+  button.classList.toggle('is-off',!worldWrapEnabled);
+}
+function installWorldWrapButton() {
+  const map=$('map');
+  if(!map || $('worldWrapToggle')) return;
+  const button=document.createElement('button');
+  button.id='worldWrapToggle'; button.type='button'; button.className='world-wrap-toggle';
+  button.addEventListener('click',()=>setWorldWrapEnabled(!worldWrapEnabled));
+  map.appendChild(button); updateWorldWrapButton();
 }
 
 function renderMap() {
@@ -322,19 +375,10 @@ function renderMap() {
     const path=addSvg('path',{d:countryOutlinePath(feature.geometry),fill:'none',stroke:'#ffffff','stroke-width':'.55','stroke-opacity':'.62','vector-effect':'non-scaling-stroke'},countryBorderGroup);
     countryBorderPaths.push({id,path});
   });
-  // Duplicate the complete world on both sides so crossing the date line reveals the opposite edge.
+  // Duplicate the complete world only while horizontal wrapping is enabled.
+  // Disabling it removes these SVG copies entirely to reduce drawing work.
   wrapCopies=[];
-  [baseGroup,adminGroup,countryBorderGroup,urbanPlanGroup].forEach((group,index)=>{
-    const left=group.cloneNode(true),right=group.cloneNode(true);
-    left.setAttribute('transform','translate(-1000 0)');
-    right.setAttribute('transform','translate(1000 0)');
-    [left,right].forEach(copy=>{
-      copy.querySelectorAll('.admin-shape').forEach((path,i)=>path.addEventListener('click',e=>{e.stopPropagation();if(selectedCountry&&adminPaths[i])chooseRegion(adminPaths[i].feature);}));
-      copy.querySelectorAll('.country-shape').forEach(path=>path.addEventListener('click',()=>{if(selectedCountry&&path.getAttribute('data-id')!==selectedCountry.id)showToast('لا يمكنك تغيير دولتك أثناء اللعب. استخدم زر الرجوع.');}));
-    });
-    svg.appendChild(left); svg.appendChild(right);
-    wrapCopies.push({index,left,right});
-  });
+  if(worldWrapEnabled) createWorldWrapCopies();
   const allBounds=geo.features.filter(f=>allCountries.some(c=>c.id===f.properties.iso_a3)).map(f=>boundsForGeometry(f.geometry));
   overviewBounds=unionBounds(allBounds); fit(overviewBounds,30); overviewViewWidth=view.w;
   paintCountries(); paintAdminRegions();
@@ -412,6 +456,7 @@ async function enterGame(countryId) {
   updateCountryPopover();
   if(!svg) renderMap();
   else if(overviewBounds) { fit(overviewBounds,30); zoom(3.0); }
+  installWorldWrapButton();
   paintCountries(); paintAdminRegions();
   requestAnimationFrame(()=>{if(svg)updateView();});
 }
@@ -747,6 +792,3 @@ if(!Array.isArray(window.WD_COUNTRY_LIST) || !window.WD_COUNTRY_LIST.length) {
 } else {
   initInterface();
 }
-  wrapCopies.forEach(copy=>{
-    if(copy.index===1){copy.left.style.opacity=String(t);copy.right.style.opacity=String(t);copy.left.style.display=t<.015?'none':'inline';copy.right.style.display=t<.015?'none':'inline';}
-  });
