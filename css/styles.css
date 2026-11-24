@@ -249,3 +249,9 @@
 .operation-meter{margin-top:3px;height:4px;}
 .operation-meter em{background:linear-gradient(90deg,#a47b3e,#e8ca88);}
 @media(max-width:390px){.bottom-panel.cities-panel{max-height:72dvh;padding:8px;}.city-management-card{padding:8px;}.city-resource-icon{font-size:15px;}.city-resource b{font-size:10px;}.city-resource small{font-size:7px;}.city-operations{gap:5px;}.city-operation{gap:5px;padding:6px;}.operation-icon{width:29px;height:29px;flex-basis:29px;font-size:20px;}}
+
+/* Horizontal world-wrap performance switch */
+.world-wrap-toggle{position:absolute;z-index:18;top:10px;right:10px;display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid #718096;border-radius:8px;background:#142338ed;color:#f3e7cf;font:700 11px Arial,sans-serif;box-shadow:0 3px 12px #0007;cursor:pointer;direction:rtl}
+.world-wrap-toggle span{font-size:17px;line-height:1;color:#d9bd82}
+.world-wrap-toggle.is-off{border-color:#4b9b79;color:#b9e8d0;background:#102b25ed}
+.world-wrap-toggle:active{transform:translateY(1px)}
