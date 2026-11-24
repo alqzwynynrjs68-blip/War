@@ -82,6 +82,19 @@ function updateView() {
     const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;
     urbanPlanGroup.style.visibility=zoomLevel>=2.2?'visible':'hidden';
   }
+  // Country borders adapt smoothly to camera zoom: very thin at world overview,
+  // progressively clearer at close range. non-scaling-stroke keeps the result
+  // measured in screen pixels rather than allowing geometry scale to dominate.
+  const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;
+  const borderT=Math.max(0,Math.min(1,(zoomLevel-1)/2.5));
+  const easedBorderT=borderT*borderT*(3-2*borderT);
+  countryBorderPaths.forEach(({id,path})=>{
+    const active=selectedCountry&&id===selectedCountry.id;
+    const width=active?(0.34+0.66*easedBorderT):(0.16+0.54*easedBorderT);
+    const opacity=active?(0.62+0.36*easedBorderT):(0.30+0.52*easedBorderT);
+    path.setAttribute('stroke-width',width.toFixed(3));
+    path.setAttribute('stroke-opacity',opacity.toFixed(3));
+  });
   // ADM1 lines are hidden at the full Gulf overview and fade in as the user zooms closer.
   const hideAt=overviewViewWidth*.985, fullAt=overviewViewWidth*.70;
   const t=Math.max(0,Math.min(1,(hideAt-view.w)/(hideAt-fullAt)));
@@ -110,6 +123,8 @@ function paintCountries() {
   countryBorderPaths.forEach(({id,path})=>{
     const active=selectedCountry&&id===selectedCountry.id;
     path.setAttribute('stroke',active?'#fff0c5':'#cbd5e1');
+    // Stroke styling is updated continuously from updateView() so borders stay subtle
+    // at world scale and become clearer only as the camera zooms in.
     path.setAttribute('stroke-width',active?'1.1':'.55');
     path.setAttribute('stroke-opacity',active?'.98':'.62');
   });
