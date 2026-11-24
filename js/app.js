@@ -594,7 +594,7 @@ function escapeChatText(value) {
 }
 function renderResearch() {
   const researchCategories=[
-    {id:'infantry',name:'المشاة',image:'infantry.jpg',icon:'infantry-icon.png'},
+    {id:'infantry',name:'المشاة',image:'infantry-reference.jpeg',icon:'infantry-icon.png'},
     {id:'armor',name:'المدرعات',image:'armor.jpg',icon:'armor-icon.png'},
     {id:'support',name:'الدعم',image:'support.jpg',icon:'support-icon.png'},
     {id:'helicopter',name:'الهليكوبتر',image:'helicopter.jpg',icon:'helicopter-icon.png'},
