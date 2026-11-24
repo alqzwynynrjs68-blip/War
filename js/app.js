@@ -626,6 +626,7 @@ function renderResearch() {
 function renderCategoryResearch(categoryId) {
   const category=RESEARCH_CATEGORIES.find(item=>item.id===categoryId)||RESEARCH_CATEGORIES[0];
   const panel=$('mainPanel');
+  const campaignDay=Math.min(50,Math.floor(gameMinute/1440)+1);
   const renderTreeRows=()=>`<div class="category-two-tree-grid" dir="rtl" aria-label="مسارا البحث حتى اليوم الثاني عشر">
     ${Array.from({length:12},(_,i)=>{const d=i+1;return `<div class="category-two-tree-row ${d%2?'day-light':'day-dark'}" data-day-row="${d}">
       <div class="category-two-day-number">${d}</div>
@@ -640,7 +641,7 @@ function renderCategoryResearch(categoryId) {
     </div>
     <div class="infantry-tree-toolbar category-tree-toolbar" style="--category-tree-image:url('assets/${category.image}')">
       <div class="infantry-tree-title"><strong>شجرة أبحاث ${category.name}</strong></div>
-      <div class="infantry-calendar"><span class="calendar-smile">📅</span><span>تقويم الحملة</span><b>اليوم ${day} / 50</b></div>
+      <div class="infantry-calendar"><span class="calendar-smile">📅</span><span>تقويم الحملة</span><b>اليوم ${campaignDay} / 50</b></div>
     </div>
     <div class="category-two-trees" aria-label="شجرتا أبحاث ${category.name}">
       <div class="category-two-tree-head"><span>الشجرة الأولى</span><span>الشجرة الثانية</span><span>اليوم</span></div>
