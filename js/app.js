@@ -19,6 +19,7 @@ let view = {x:0,y:0,w:1000,h:650};
 let selectedCountry = null, selectedRegion = null;
 let adminPaths = [], countryBorderPaths = [], wrapCopies = [], cityMarkerNodes = [], cityMarkerLayer = null, overviewViewWidth = 222, overviewBounds = null;
 let toastTimer = null;
+let viewRenderFrame = 0, lastStyledZoom = null, lastStyledCountry = null;
 let activePanel = null, diplomacyTab = 'countries', activeDiplomacyCountry = null;
 let selectedCity = null, activeDialog = null, activeConversationCountry = null;
 const relations = {};
@@ -79,10 +80,15 @@ function constrainCamera() {
   // If the viewport is taller than the usable map area, center it instead of allowing overscroll.
   view.y=maxY<minY?(650-view.h)/2:Math.max(minY,Math.min(maxY,view.y));
 }
-function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2) {
+function scheduleViewUpdate() {
+  if(viewRenderFrame) return;
+  viewRenderFrame=requestAnimationFrame(()=>{viewRenderFrame=0;updateView();});
+}
+function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2,defer=false) {
   const minW=overviewViewWidth/28.0,maxW=overviewViewWidth/3.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
-  view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; constrainCamera(); updateView();
+  view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; constrainCamera();
+  if(defer) scheduleViewUpdate(); else updateView();
 }
 function updateView() {
   if(!svg) return;
@@ -92,26 +98,29 @@ function updateView() {
     const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;
     urbanPlanGroup.style.visibility=zoomLevel>=14.5?'visible':'hidden';
   }
-  // Country borders adapt smoothly to camera zoom: very thin at world overview,
-  // progressively clearer at close range. non-scaling-stroke keeps the result
-  // measured in screen pixels rather than allowing geometry scale to dominate.
+  // Zoom-dependent SVG styling is unchanged while panning; recalculate it only
+  // when zoom or the selected country actually changes.
   const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;
-  const borderT=Math.max(0,Math.min(1,(zoomLevel-1)/2.5));
-  const easedBorderT=borderT*borderT*(3-2*borderT);
-  countryBorderPaths.forEach(({id,path})=>{
-    const active=selectedCountry&&id===selectedCountry.id;
-    const width=active?(0.34+0.66*easedBorderT):(0.16+0.54*easedBorderT);
-    const opacity=active?(0.62+0.36*easedBorderT):(0.30+0.52*easedBorderT);
-    path.setAttribute('stroke-width',width.toFixed(3));
-    path.setAttribute('stroke-opacity',opacity.toFixed(3));
-  });
-  // ADM1 province boundaries appear at 22.0x and remain visible at closer zoom levels.
-  const t=zoomLevel>=22.0?1:0;
-  if(adminGroup) {
-    adminGroup.style.opacity=String(t);
-    adminGroup.style.visibility=t<.015?'hidden':'visible';
-    adminGroup.style.display=t<.015?'none':'inline';
-    adminGroup.style.pointerEvents=t>=.45?'auto':'none';
+  const zoomKey=zoomLevel.toFixed(4), countryKey=selectedCountry?selectedCountry.id:'';
+  if(zoomKey!==lastStyledZoom || countryKey!==lastStyledCountry) {
+    const borderT=Math.max(0,Math.min(1,(zoomLevel-1)/2.5));
+    const easedBorderT=borderT*borderT*(3-2*borderT);
+    countryBorderPaths.forEach(({id,path})=>{
+      const active=selectedCountry&&id===selectedCountry.id;
+      const width=active?(0.34+0.66*easedBorderT):(0.16+0.54*easedBorderT);
+      const opacity=active?(0.62+0.36*easedBorderT):(0.30+0.52*easedBorderT);
+      path.setAttribute('stroke-width',width.toFixed(3));
+      path.setAttribute('stroke-opacity',opacity.toFixed(3));
+    });
+    if(urbanPlanGroup) urbanPlanGroup.style.visibility=zoomLevel>=14.5?'visible':'hidden';
+    const t=zoomLevel>=22.0?1:0;
+    if(adminGroup) {
+      adminGroup.style.opacity=String(t);
+      adminGroup.style.visibility=t<.015?'hidden':'visible';
+      adminGroup.style.display=t<.015?'none':'inline';
+      adminGroup.style.pointerEvents=t>=.45?'auto':'none';
+    }
+    lastStyledZoom=zoomKey; lastStyledCountry=countryKey;
   }
 }
 function showToast(message) {
@@ -328,13 +337,13 @@ function renderMap() {
       const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
       if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
       const r=svg.getBoundingClientRect();
-      view.x=drag.vx-dx/r.width*view.w; view.y=drag.vy-dy/r.height*view.h; constrainCamera(); updateView();
+      view.x=drag.vx-dx/r.width*view.w; view.y=drag.vy-dy/r.height*view.h; constrainCamera(); scheduleViewUpdate();
     } else if(pointers.size===2){
       const a=[...pointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
       if(lastDistance>0){
         const mid={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2},r=svg.getBoundingClientRect();
         const focus={x:(mid.x-r.left)/r.width*view.w+view.x,y:(mid.y-r.top)/r.height*view.h+view.y};
-        zoom(d/lastDistance,focus.x,focus.y);
+        zoom(d/lastDistance,focus.x,focus.y,true);
       }
       lastDistance=d;
     }
