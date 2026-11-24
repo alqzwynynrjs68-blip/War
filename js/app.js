@@ -109,9 +109,9 @@ function paintCountries() {
   });
   countryBorderPaths.forEach(({id,path})=>{
     const active=selectedCountry&&id===selectedCountry.id;
-    path.setAttribute('stroke','#ffffff');
-    path.setAttribute('stroke-width',active?'2.2':'1.9');
-    path.setAttribute('stroke-opacity',active?'1':'.92');
+    path.setAttribute('stroke',active?'#fff0c5':'#cbd5e1');
+    path.setAttribute('stroke-width',active?'1.1':'.55');
+    path.setAttribute('stroke-opacity',active?'.98':'.62');
   });
 }
 function paintAdminRegions() {
@@ -165,9 +165,6 @@ function renderUrbanPlans() {
     const clipId='urban-plan-clip-'+index;
     const clip=addSvg('clipPath',{id:clipId,clipPathUnits:'userSpaceOnUse'},defs);
     addSvg('path',{d:geometryPath(feature.geometry)},clip);
-    if(city.countryId!==selectedCountry?.id) {
-      addSvg('rect',{x:(cx-width/2).toFixed(4),y:(cy-height/2).toFixed(4),width:width.toFixed(4),height:height.toFixed(4),fill:'#e6e2d8','fill-opacity':'.92','clip-path':`url(#${clipId})`,'pointer-events':'none'},urbanPlanGroup);
-    }
     const image=addSvg('image',{
       href:'assets/city-urban-plan.png',x:(cx-width/2).toFixed(4),y:(cy-height/2).toFixed(4),
       width:width.toFixed(4),height:height.toFixed(4),'preserveAspectRatio':'xMidYMid meet',
@@ -268,7 +265,7 @@ function renderMap() {
   geo.features.forEach(feature=>{
     const id=feature.properties.iso_a3;
     if(!allCountries.some(c=>c.id===id)) return;
-    const path=addSvg('path',{d:geometryPath(feature.geometry),fill:'none',stroke:'#ffffff','stroke-width':'1.9','stroke-opacity':'.98','vector-effect':'non-scaling-stroke'},countryBorderGroup);
+    const path=addSvg('path',{d:geometryPath(feature.geometry),fill:'none',stroke:'#ffffff','stroke-width':'.55','stroke-opacity':'.62','vector-effect':'non-scaling-stroke'},countryBorderGroup);
     countryBorderPaths.push({id,path});
   });
   const allBounds=geo.features.filter(f=>allCountries.some(c=>c.id===f.properties.iso_a3)).map(f=>boundsForGeometry(f.geometry));
