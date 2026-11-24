@@ -124,3 +124,50 @@
   .nav-item img{height:56px}
   .nav-item b{font-size:9px}
 }
+
+/* Two-tier strategy HUD with a full-height country flag */
+.game-topbar{height:96px;padding:6px 9px;display:flex;flex-direction:row;align-items:stretch;gap:9px;direction:rtl;background:linear-gradient(180deg,#0b1422f8,#101d2df2);border-bottom:1px solid #526078}
+.country-flag-button{width:58px;min-width:58px;align-self:stretch;flex-direction:column;justify-content:center;gap:0;padding:3px;border:1px solid #a58a58;border-radius:9px;background:linear-gradient(145deg,#253951,#101b2b);font-size:31px;box-shadow:inset 0 0 15px #d5b77718,0 3px 9px #0005}
+.flag-chevron{font-size:12px;line-height:12px}
+.topbar-resource-area{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:5px}
+.topbar-resource-row{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
+.topbar-primary-row{min-height:38px;padding-bottom:5px;border-bottom:1px solid #34465b}
+.topbar-secondary-row{min-height:30px}
+.status-date{flex:0 0 auto;color:#e5d2a7;font-size:11px;font-weight:800;white-space:nowrap}
+.resource-strip{display:flex;align-items:center;justify-content:flex-end;gap:4px;min-width:0}
+.resource-chip{display:inline-flex;align-items:center;justify-content:center;gap:3px;min-width:0;padding:4px 5px;border:1px solid #354a62;border-radius:6px;background:linear-gradient(180deg,#1b2c41,#111e2f);color:#f3f5f8;white-space:nowrap;font:700 11px Cairo,Arial,sans-serif;box-shadow:inset 0 1px #ffffff0a}
+.resource-chip span{font-size:13px}.resource-chip b{font-size:10px;font-variant-numeric:tabular-nums}.resource-chip i{font-size:9px;color:#d7bd88;font-style:normal}
+.resource-chip:active{border-color:var(--gold);background:#263b52}
+.country-popover{top:101px;right:8px;width:205px}
+.resource-popover{position:fixed;z-index:60;width:232px;padding:11px 12px;background:linear-gradient(145deg,#1b2c41,#101b2b);border:1px solid #a58a58;border-radius:9px;box-shadow:0 14px 35px #000b;color:#edf2f7;font-size:11px}
+.resource-popover-title{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid #3a4d64;color:#f1d9a8;font-size:13px}
+.resource-popover-close{border:0;background:transparent;color:#cbd5e1;font-size:20px;line-height:18px;padding:0 3px}
+.resource-detail-row{display:flex;justify-content:space-between;gap:10px;padding:6px 1px;color:#b8c5d4}
+.resource-detail-row b{color:#f4f6f8;font-variant-numeric:tabular-nums}
+.resource-detail-row .positive,.resource-detail-row b.positive{color:#82d5a3}.resource-detail-row .negative,.resource-detail-row b.negative{color:#f08e8e}
+.resource-net{margin-top:3px;padding-top:8px;border-top:1px solid #3a4d64;color:#e9d4a8}
+#map{inset:96px 0 0}
+.city-production{display:flex;flex-direction:column;gap:3px;margin:8px 0 10px;padding:8px 10px;border:1px solid #526078;border-radius:8px;background:#142338;color:#aebdce;font-size:10px}
+.city-production strong{display:flex;align-items:center;gap:6px;color:#f0e0bf;font-size:12px}
+.city-production strong b{margin-inline-start:auto;color:#8fd6a7;font-size:11px;white-space:nowrap}
+@media(max-width:700px){
+ .game-topbar{height:92px;padding:5px 6px;gap:6px}
+ .country-flag-button{width:47px;min-width:47px;font-size:27px}
+ .topbar-resource-area{gap:4px}
+ .topbar-primary-row{min-height:37px;padding-bottom:4px}
+ .topbar-secondary-row{min-height:29px}
+ .status-date{font-size:9px}
+ .resource-strip{gap:2px}
+ .resource-chip{gap:2px;padding:4px 3px;border-radius:5px}
+ .resource-chip span{font-size:12px}.resource-chip b{font-size:9px}.resource-chip i{font-size:8px}
+ .country-popover{top:97px;right:6px}
+ #map{inset:92px 0 0}
+}
+@media(max-width:390px){
+ .game-topbar{height:88px;padding:4px;gap:4px}
+ .country-flag-button{width:40px;min-width:40px;font-size:23px}
+ .status-date{font-size:8px}
+ .resource-chip{padding:3px 2px;gap:1px}
+ .resource-chip span{font-size:11px}.resource-chip b{font-size:8px}.resource-chip i{font-size:7px}
+ #map{inset:88px 0 0}
+}
