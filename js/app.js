@@ -24,8 +24,16 @@ let selectedCity = null, activeDialog = null, activeConversationCountry = null;
 const relations = {};
 const conversationMessages = {};
 // Campaign state is initialized only when a country is selected and the world opens.
-const STARTING_RESOURCES = Object.freeze({money:10000, iron:5000, electronics:5000});
-let resources = {...STARTING_RESOURCES};
+const RESOURCE_DEFS = {
+  money:{icon:'💵',name:'الدولارات',stock:10000,consumption:35}, food:{icon:'🌾',name:'الغذاء',stock:1800,consumption:55}, oil:{icon:'🛢️',name:'النفط',stock:1400,consumption:28}, workforce:{icon:'👷',name:'القوى العاملة',stock:900,consumption:8},
+  supplies:{icon:'📦',name:'الإمدادات',stock:900,consumption:22}, iron:{icon:'🔩',name:'الحديد',stock:1200,consumption:18}, rubber:{icon:'⚫',name:'المطاط',stock:700,consumption:10}, electronics:{icon:'💻',name:'الإلكترونيات',stock:800,consumption:9}, rare:{icon:'💎',name:'القطع النادرة',stock:250,consumption:3}
+};
+const CITY_PRODUCTION = {
+  'بغداد':{key:'supplies',amount:90},'النجف':{key:'food',amount:75},'البصرة':{key:'oil',amount:110},'الرمادي':{key:'rubber',amount:35},'الموصل':{key:'iron',amount:65},'السليمانية':{key:'electronics',amount:28},'الكوت':{key:'workforce',amount:45},
+  'الرياض':{key:'money',amount:95},'طهران':{key:'electronics',amount:55},'مدينة الكويت':{key:'oil',amount:55},'مسقط':{key:'supplies',amount:35},'المنامة':{key:'money',amount:40},'الدوحة':{key:'rare',amount:12}
+};
+let resources = Object.fromEntries(Object.entries(RESOURCE_DEFS).map(([key,def])=>[key,def.stock]));
+let resourceProduction = {}, resourceConsumption = {};
 let gameStartedAt = null, gameClockTimer = null, gameMinute = 0;
 let infantryResearch = {status:'available', completesAt:null};
 
@@ -293,15 +301,13 @@ function renderMap() {
   const end=e=>{pointers.delete(e.pointerId);if(pointers.size<2)lastDistance=0;if(pointers.size===1){const p=[...pointers.values()][0];drag={x:p.x,y:p.y,vx:view.x,vy:view.y};}else drag=null;};
   svg.addEventListener('pointerup',end); svg.addEventListener('pointercancel',end);
   svg.addEventListener('wheel',e=>{e.preventDefault();const p=toSvg(e);zoom(e.deltaY<0?1.18:1/1.18,p.x,p.y);},{passive:false});
-  $('zoomIn').onclick=()=>zoom(1.65);
-  $('zoomOut').onclick=()=>zoom(1/1.65);
-  $('resetView').onclick=()=>fit(overviewBounds,30);
+
 }
 function updateCountryPopover() {
   $('topCountryFlag').textContent=selectedCountry.flag;
   $('popoverFlag').textContent=selectedCountry.flag;
   $('popoverCountryName').textContent=selectedCountry.ar;
-  $('popoverRegionCount').textContent=selectedCountry.count;
+  $('popoverCityCount').textContent=CITY_MARKERS.filter(city=>city.country===selectedCountry.ar).length;
 }
 function enterGame(countryId) {
   selectedCountry=playableCountries.find(c=>c.id===countryId);
@@ -481,7 +487,8 @@ function renderInfantryResearch() {
 }
 function startNewCampaignClock() {
   stopCampaignClock();
-  resources={...STARTING_RESOURCES};
+  resources=Object.fromEntries(Object.entries(RESOURCE_DEFS).map(([key,def])=>[key,def.stock]));
+  recalculateEconomy();
   infantryResearch={status:'available',completesAt:null};
   gameStartedAt=Date.now(); gameMinute=0;
   updateGameStatus();
@@ -494,7 +501,10 @@ function stopCampaignClock() {
 function updateCampaignClock() {
   if(gameStartedAt===null) return;
   // One in-game minute passes every five real seconds (one game hour = five real minutes).
+  const previousDay=Math.floor(gameMinute/1440)+1;
   gameMinute=Math.floor((Date.now()-gameStartedAt)/5000);
+  const currentDay=Math.floor(gameMinute/1440)+1;
+  for(let d=previousDay;d<currentDay;d++) applyDailyEconomy();
   if(infantryResearch.status==='running' && gameMinute>=infantryResearch.completesAt) {
     infantryResearch={status:'completed',completesAt:null};
     if(!$('dialogPanel').hidden && $('dialogPanel').querySelector('#infantryResearchStatus')) renderInfantryResearch();
@@ -507,15 +517,44 @@ function updateGameStatus() {
   const minuteOfDay=gameMinute%1440;
   const hours=String(Math.floor(minuteOfDay/60)).padStart(2,'0');
   const minutes=String(minuteOfDay%60).padStart(2,'0');
-  const date=$('gameDateTime'); const money=$('moneyValue');
-  if(date) date.textContent=`يوم ${day} | ${hours}:${minutes}`;
-  if(money) money.textContent=resources.money.toLocaleString('en-US');
+  const date=$('gameDateTime');
+  if(date) date.textContent=`اليوم ${day} · ${hours}:${minutes}`;
+  renderResourceStrips();
+}
+function recalculateEconomy() {
+  resourceProduction={}; resourceConsumption={};
+  Object.keys(RESOURCE_DEFS).forEach(key=>{resourceProduction[key]=0;resourceConsumption[key]=RESOURCE_DEFS[key].consumption;});
+  const cities=CITY_MARKERS.filter(city=>selectedCountry&&city.country===selectedCountry.ar);
+  cities.forEach(city=>{const p=CITY_PRODUCTION[city.name];if(p)resourceProduction[p.key]=(resourceProduction[p.key]||0)+p.amount;});
+}
+function applyDailyEconomy() {
+  recalculateEconomy();
+  Object.keys(RESOURCE_DEFS).forEach(key=>{
+    const net=(resourceProduction[key]||0)-(resourceConsumption[key]||0);
+    resources[key]=Math.max(0,(resources[key]||0)+net);
+  });
+  renderResourceStrips();
+}
+function renderResourceStrips() {
+  if(!selectedCountry)return;
+  recalculateEconomy();
+  const primary=['money','food','oil','workforce'], secondary=['supplies','iron','rubber','electronics','rare'];
+  const render=(keys)=>keys.map(key=>`<button class="resource-chip" data-resource="${key}" aria-label="${RESOURCE_DEFS[key].name}"><span>${RESOURCE_DEFS[key].icon}</span><b>${Math.floor(resources[key]||0).toLocaleString('en-US')}</b><i>⌄</i></button>`).join('');
+  $('primaryResources').innerHTML=render(primary); $('secondaryResources').innerHTML=render(secondary);
+}
+function openResourcePopover(key,anchor) {
+  const def=RESOURCE_DEFS[key]; if(!def)return;
+  const pop=$('resourcePopover'); const production=resourceProduction[key]||0, consumption=resourceConsumption[key]||0, net=production-consumption;
+  pop.innerHTML=`<div class="resource-popover-title"><strong>${def.icon} ${def.name}</strong><button type="button" class="resource-popover-close" aria-label="إغلاق">×</button></div><div class="resource-detail-row"><span>المخزون</span><b>${Math.floor(resources[key]||0).toLocaleString('en-US')}</b></div><div class="resource-detail-row"><span>إنتاج الدولة اليومي</span><b class="positive">+${production.toLocaleString('en-US')}</b></div><div class="resource-detail-row"><span>استهلاك الدولة اليومي</span><b class="negative">−${consumption.toLocaleString('en-US')}</b></div><div class="resource-detail-row resource-net"><span>صافي التغير اليومي</span><b class="${net>=0?'positive':'negative'}">${net>=0?'+':''}${net.toLocaleString('en-US')}</b></div>`;
+  const r=anchor.getBoundingClientRect(); pop.style.top=Math.max(8,Math.min(window.innerHeight-190,r.bottom+7))+'px'; pop.style.left=Math.max(8,Math.min(window.innerWidth-245,r.left-95))+'px'; pop.hidden=false;
+  pop.querySelector('.resource-popover-close').onclick=()=>pop.hidden=true;
 }
 function showCityPanel(city) {
   selectedCity=city; activePanel=null;
   $('mainPanel').hidden=true; $('bottomNav').hidden=true; $('dialogPanel').hidden=true;
   $('selectionPanel').hidden=false;
-  $('selectionPanel').innerHTML=`<div class="selection-city-head"><strong>🏙️ ${city.name}</strong><button class="panel-close" id="selectionClose">×</button></div><div class="happiness">😊 السعادة <b>75%</b></div><div class="selection-actions"><button id="cityBuild">🏗 بناء</button><button id="cityArmy">⚔ تصنيع جيش</button></div>`;
+  const production=CITY_PRODUCTION[city.name]||{key:'food',amount:20}; const def=RESOURCE_DEFS[production.key];
+  $('selectionPanel').innerHTML=`<div class="selection-city-head"><strong>🏙️ ${city.name}</strong><button class="panel-close" id="selectionClose">×</button></div><div class="happiness">😊 السعادة <b>75%</b></div><div class="city-production"><span>إنتاج المدينة</span><strong>${def.icon} ${def.name} <b>+${production.amount.toLocaleString('en-US')} يومياً</b></strong></div><div class="selection-actions"><button id="cityBuild">🏗 بناء</button><button id="cityArmy">⚔ تصنيع جيش</button></div>`;
   $('selectionClose').onclick=closePanels;
   $('cityArmy').onclick=()=>showToast('تم فتح تصنيع الجيش للمدينة: '+city.name);
   $('cityBuild').onclick=()=>showToast('البناء في '+city.name);
@@ -536,10 +575,14 @@ function initInterface() {
   wireBottomNavigation();
   $('startButton').addEventListener('click',()=>{$('welcomeScreen').hidden=true;$('countryScreen').hidden=false;});
   $('selectionBackButton').addEventListener('click',()=>{$('countryScreen').hidden=true;$('welcomeScreen').hidden=false;});
-  $('backToCountries').addEventListener('click',returnToCountrySelection);
   $('countryFlagButton').addEventListener('click',()=>{
     const pop=$('countryPopover'); pop.hidden=!pop.hidden;
     $('countryFlagButton').setAttribute('aria-expanded',String(!pop.hidden));
+  });
+  document.addEventListener('click',e=>{
+    const chip=e.target.closest('[data-resource]');
+    if(chip){$('countryPopover').hidden=true;openResourcePopover(chip.dataset.resource,chip);return;}
+    if(!$('resourcePopover').hidden&&!$('resourcePopover').contains(e.target))$('resourcePopover').hidden=true;
   });
   document.addEventListener('pointerdown',e=>{
     if(!$('countryPopover').hidden&&!$('countryPopover').contains(e.target)&&!$('countryFlagButton').contains(e.target)){
