@@ -56,3 +56,71 @@
 .thread-messages{min-height:140px;max-height:35dvh;margin:8px 0}
 .thread-messages .chat-message{align-self:flex-end;background:#29445c;border:1px solid #49647a}
 .infantry-card p{margin:0;color:#aab6c5;font-size:12px;text-align:center}
+
+/* Campaign resources and accelerated in-game calendar */
+.game-status{display:flex;align-items:center;gap:12px;margin-inline-start:10px;padding:5px 10px;border:1px solid #3a4b61;border-radius:8px;background:#111f31;color:#e8edf4;white-space:nowrap;font-size:11px}
+.status-money{display:flex;align-items:center;gap:5px;color:#f0d59d}
+.status-money strong{font-size:12px;color:#fff;font-variant-numeric:tabular-nums}
+.status-date{color:#d6e0eb;font-size:11px;font-variant-numeric:tabular-nums}
+.infantry-research-top{display:flex;align-items:center;flex-direction:column;gap:5px;padding:13px 8px 10px;text-align:center;color:#f0e1c2}
+.infantry-round-icon{display:grid;place-items:center;width:66px;height:66px;border:2px solid #d4bd8d;border-radius:50%;background:radial-gradient(circle at 35% 30%,#40566c,#142338 72%);font-size:37px;box-shadow:0 5px 18px #0006}
+.infantry-research-top strong{font-size:14px}
+.infantry-research-top small{font-size:10px;color:#9eacbd}
+.infantry-description{margin:0 2px 12px;padding:10px 12px;border:1px solid #50637a;border-radius:8px;background:#1a2b40;color:#e4eaf1;font-size:11px;line-height:1.9;text-align:center}
+.infantry-cost-section{padding:10px 11px;margin:5px 0;border:1px solid #34475d;border-radius:9px;background:#152438}
+.infantry-cost-section>strong{display:block;margin-bottom:8px;color:#e9d5ad;font-size:12px}
+.resource-costs{display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap;color:#f1f4f8;font-size:12px;font-weight:700}
+.maintenance-section{background:#111f30}
+.research-duration{display:flex;justify-content:space-between;align-items:center;padding:10px 3px;color:#b9c5d2;font-size:11px}
+.research-duration b{color:#f0d59d}
+.research-status{text-align:center;color:#a9b8c8;font-size:10px;padding:2px 0 8px}
+.start-research-button{width:100%;padding:10px;border:1px solid #d5bd8b;border-radius:8px;background:linear-gradient(110deg,#b18e53,#e4cb96);color:#111b27;font:800 13px Cairo,Arial,sans-serif}
+.start-research-button:disabled{opacity:.6;cursor:not-allowed}
+@media(max-width:700px){
+  .game-topbar{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
+  .topbar-right{min-width:0;gap:4px}
+  .game-status{gap:5px;margin-inline-start:3px;padding:4px 5px;font-size:9px}
+  .status-money{gap:2px}.status-money strong,.status-date{font-size:9px}
+  .country-flag-button{min-width:39px}
+  .topbar-center{display:none}
+  .topbar-left{min-width:0}
+}
+@media(max-width:390px){
+  .game-status{flex-direction:column;align-items:flex-start;gap:0;padding:3px 5px}
+  .status-money strong,.status-date{font-size:8px}
+  .country-flag-button{font-size:18px;min-width:34px}
+}
+.infantry-research-top{position:relative;min-height:112px;justify-content:center;padding:13px 82px 10px 8px}
+.infantry-round-icon{position:absolute;top:13px;right:8px;width:60px;height:60px}
+
+/* Realistic illustrated bottom navigation cards */
+.bottom-nav{
+  height:118px;width:min(720px,calc(100% - 24px));gap:7px;padding:5px 6px 8px;
+  background:transparent;border:0;border-radius:0;box-shadow:none;
+}
+.nav-item{
+  position:relative;min-width:0;overflow:hidden;gap:2px;padding:4px 4px 5px;
+  border:2px solid #b78a3d;border-radius:10px;
+  background:linear-gradient(145deg,#142b47 0%,#0b192b 58%,#101c2b 100%);
+  color:#f3e6c9;box-shadow:inset 0 0 0 1px #f3d18a66,inset 0 0 15px #dca84b20,0 3px 8px #000a;
+  transition:filter .16s,transform .16s,border-color .16s;
+}
+.nav-item:before{content:"";position:absolute;inset:3px;border:1px solid #e3c17c88;border-radius:6px;pointer-events:none}
+.nav-item img{display:block;position:relative;z-index:1;width:100%;height:76px;max-width:150px;object-fit:contain;border-radius:5px;filter:drop-shadow(0 3px 4px #0009)}
+.nav-item b{position:relative;z-index:1;display:block;width:100%;font-size:12px;line-height:1.35;font-weight:800;text-align:center;color:#f6e8cb;text-shadow:0 1px 3px #000;white-space:nowrap}
+.nav-item.active,.nav-item:active{background:linear-gradient(145deg,#294564,#172a40);border-color:#f0cd7e;color:#fff3d8;box-shadow:inset 0 0 0 1px #ffe3a2,0 0 13px #dca84b55,0 3px 8px #000a}
+.nav-item:active{transform:translateY(1px)}
+.bottom-panel{bottom:calc(118px + env(safe-area-inset-bottom,0))}
+@media(max-width:700px){
+  .bottom-nav{height:101px;width:100%;gap:5px;padding:4px 5px 7px;border-radius:0;background:linear-gradient(180deg,#08132100,#081321dd 18%,#081321f7 100%)}
+  .nav-item{padding:3px 2px 4px;border-width:1.5px;border-radius:8px}
+  .nav-item:before{inset:2px;border-radius:5px}
+  .nav-item img{height:61px;width:100%;max-width:100%;}
+  .nav-item b{font-size:10px;line-height:1.2}
+  .bottom-panel{bottom:calc(101px + env(safe-area-inset-bottom,0));width:calc(100% - 16px)}
+}
+@media(max-width:360px){
+  .bottom-nav{gap:3px;padding-left:3px;padding-right:3px}
+  .nav-item img{height:56px}
+  .nav-item b{font-size:9px}
+}
