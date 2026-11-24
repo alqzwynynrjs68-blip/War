@@ -337,3 +337,31 @@
 .infantry-tech-detail .infantry-round-icon img{width:42px;height:42px;object-fit:contain}
 .infantry-tech-detail p{font-size:11px;line-height:1.9;color:#aebdcd}
 @media(max-width:700px){.infantry-tree-toolbar{padding:7px 8px;margin-bottom:7px}.infantry-tree-title{font-size:11px}.infantry-tree-title img{width:28px;height:28px}.infantry-calendar{gap:4px;font-size:9px}.infantry-calendar b{font-size:10px;padding:4px 6px}.infantry-tree-columns{gap:8px}.infantry-tree-branch{width:88px;padding:6px 3px}.infantry-tree-branch h3{font-size:9px}.tree-day-label{font-size:7px;right:0}}
+
+/* Infantry research tree: one shared right-side day ruler and continuous branch lines */
+.infantry-tree-toolbar{flex-direction:row-reverse}
+.infantry-calendar{flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:58px;padding:2px 7px;border:1px solid #596b7d;border-radius:8px;background:#101d2c}
+.infantry-calendar .calendar-smile{font-size:21px;line-height:1}
+.infantry-calendar b{font-size:10px;padding:3px 5px}
+.infantry-tree-title{margin-inline-start:auto}
+.infantry-tree-scroll{overflow-x:auto;overflow-y:auto;overscroll-behavior:contain;}
+.infantry-tree-grid{width:max-content;min-width:100%;padding:0 2px 12px;}
+.infantry-tree-grid-head,.infantry-tree-day-row{direction:rtl;display:grid;grid-template-columns:48px repeat(5,minmax(76px,1fr));min-width:448px;}
+.infantry-tree-grid-head{position:sticky;top:0;z-index:3;background:#101d2c;border:1px solid #3a4d61;border-radius:7px 7px 0 0;}
+.infantry-tree-grid-head>span,.infantry-tree-grid-head>strong{display:flex;align-items:center;justify-content:center;min-height:38px;padding:4px 3px;border-left:1px solid #34485d;color:#d8c69e;font-size:9px;text-align:center;line-height:1.4}
+.infantry-tree-grid-head .day-head{color:#e7d6ad;background:#26384b}
+.infantry-tree-day-row{min-height:48px;position:relative;border-bottom:1px solid #ffffff0a;}
+.infantry-tree-day-row.day-light{background:rgba(190,204,218,.075)}
+.infantry-tree-day-row.day-dark{background:rgba(5,14,25,.22)}
+.infantry-day-number{position:sticky;right:0;z-index:2;display:flex;align-items:center;justify-content:center;border-left:1px solid #69798a55;color:#e5d6b4;font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;background:linear-gradient(90deg,#27394c,#1b2b3d);}
+.infantry-tree-cell{position:relative;display:flex;align-items:center;justify-content:center;min-height:48px;border-left:1px solid #ffffff08;}
+.infantry-tree-line{position:absolute;top:0;bottom:0;left:50%;width:1px;transform:translateX(-50%);background:linear-gradient(180deg,rgba(191,164,111,.58),rgba(112,135,157,.48));}
+.infantry-tech-node{width:31px;height:31px;margin:0;padding:5px;background:radial-gradient(circle at 35% 25%,#62778b,#17283c 75%);}
+.infantry-tech-node.day-one-tech{border-color:#e2c17e;box-shadow:0 0 0 2px rgba(226,193,126,.13),0 2px 8px #0009;}
+@media(max-width:700px){
+ .infantry-tree-grid-head,.infantry-tree-day-row{grid-template-columns:42px repeat(5,minmax(68px,1fr));min-width:382px}
+ .infantry-tree-day-row,.infantry-tree-cell{min-height:45px}
+ .infantry-day-number{font-size:10px}
+ .infantry-tree-grid-head>span,.infantry-tree-grid-head>strong{font-size:8px;min-height:35px}
+ .infantry-tech-node{width:28px;height:28px}
+}
