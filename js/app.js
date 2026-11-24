@@ -592,76 +592,92 @@ function renderConversationThread(country) {
 function escapeChatText(value) {
   return String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
+const RESEARCH_CATEGORIES=[
+  {id:'infantry',name:'المشاة',image:'infantry-banner.jpg',icon:'infantry-icon.png'},
+  {id:'armor',name:'الدبابات',image:'armor-banner.jpg',icon:'armor-icon.png'},
+  {id:'support',name:'الدعم',image:'support-banner.jpg',icon:'support-icon.png'},
+  {id:'helicopter',name:'الهليكوبتر',image:'helicopter-banner.jpg',icon:'helicopter-icon.png'},
+  {id:'fighters',name:'الطائرات',image:'fighters-banner.jpg',icon:'fighters-icon.png'},
+  {id:'strategic-aircraft',name:'الطائرات الاستراتيجية',image:'strategic-aircraft-banner.jpg',icon:'strategic-aircraft-icon.png'},
+  {id:'naval',name:'السفن البحرية',image:'naval-banner.jpg',icon:'naval-icon.png'},
+  {id:'submarines',name:'الغواصات',image:'submarines-banner.jpg',icon:'submarines-icon.png'},
+  {id:'missiles',name:'الصواريخ',image:'missiles-banner.jpg',icon:'missiles-icon.png'},
+  {id:'officers',name:'الضباط',image:'officers-banner.jpg',icon:'officers-icon.png'}
+];
 function renderResearch() {
-  const researchCategories=[
-    {id:'infantry',name:'المشاة',image:'infantry-reference.jpeg',icon:'infantry-icon.png'},
-    {id:'armor',name:'المدرعات',image:'armor.jpg',icon:'armor-icon.png'},
-    {id:'support',name:'الدعم',image:'support.jpg',icon:'support-icon.png'},
-    {id:'helicopter',name:'الهليكوبتر',image:'helicopter.jpg',icon:'helicopter-icon.png'},
-    {id:'fighters',name:'المقاتلات',image:'fighters.jpg',icon:'fighters-icon.png'},
-    {id:'strategic-aircraft',name:'الطائرات الاستراتيجية',image:'strategic-aircraft.jpg',icon:'strategic-aircraft-icon.png'},
-    {id:'naval',name:'السفن البحرية',image:'naval.jpg',icon:'naval-icon.png'},
-    {id:'submarines',name:'الغواصات',image:'submarines.jpg',icon:'submarines-icon.png'},
-    {id:'missiles',name:'الصواريخ',image:'missiles.jpg',icon:'missiles-icon.png'},
-    {id:'officers',name:'الضباط',image:'officers.jpg',icon:'officers-icon.png'}
-  ];
   $('mainPanel').classList.add('research-fullscreen');
+  $('mainPanel').classList.remove('infantry-tree-screen');
   $('mainPanel').innerHTML=`<div class="panel-head"><strong>الأبحاث العسكرية</strong><button class="panel-close" data-close aria-label="إغلاق">×</button></div>
     <div class="research-tabs" role="group" aria-label="أقسام الأبحاث">
       <button class="research-tab is-active" type="button" data-research-tab="first"><span class="research-tab-image" aria-hidden="true">▧</span><b>البحث الأول</b></button>
       <button class="research-tab" type="button" data-research-tab="second"><span class="research-tab-image" aria-hidden="true">▧</span><b>البحث الثاني</b></button>
     </div>
-    <div class="panel-content research-list">${researchCategories.map(category=>`<button class="research-category-button" type="button" data-research-category="${category.id}" aria-label="${category.name}">
+    <div class="panel-content research-list">${RESEARCH_CATEGORIES.map(category=>`<button class="research-category-button" type="button" data-research-category="${category.id}" aria-label="${category.name}">
       <span class="research-category-art" style="background-image:url('assets/${category.image}')" aria-hidden="true"></span>
       <span class="research-category-logo"><img src="assets/${category.icon}" alt=""></span>
       <span class="research-category-copy"><b>${category.name}</b></span>
     </button>`).join('')}</div>`;
   $('mainPanel').querySelector('[data-close]').onclick=closePanels;
-  $('mainPanel').querySelectorAll('[data-research-tab]').forEach(tab=>{
-    tab.onclick=()=>{
-      $('mainPanel').querySelectorAll('[data-research-tab]').forEach(item=>item.classList.toggle('is-active',item===tab));
-    };
+  $('mainPanel').querySelectorAll('[data-research-tab]').forEach(tab=>tab.onclick=()=>{
+    $('mainPanel').querySelectorAll('[data-research-tab]').forEach(item=>item.classList.toggle('is-active',item===tab));
   });
-  $('mainPanel').querySelectorAll('[data-research-category]').forEach(button=>{
-    button.onclick=()=>button.dataset.researchCategory==='infantry'?renderInfantryResearch():showToast('أبحاث هذه الفئة ستُضاف لاحقاً');
-  });
+  $('mainPanel').querySelectorAll('[data-research-category]').forEach(button=>button.onclick=()=>renderCategoryResearch(button.dataset.researchCategory));
 }
-function renderInfantryResearch() {
+function renderCategoryResearch(categoryId) {
+  const category=RESEARCH_CATEGORIES.find(item=>item.id===categoryId)||RESEARCH_CATEGORIES[0];
   const panel=$('mainPanel');
-  const branches=[
-    {id:'core',name:'التدريب الأساسي',days:[1,2,3,5,7,9,12]},
-    {id:'weapons',name:'تطوير الأسلحة',days:[1,2,4,5,6,8,10,12]},
+  const branchesA=[
+    {id:'basics',name:'التدريب الأساسي',days:[1,2,3,5,7,9,12]},
+    {id:'equipment',name:'تطوير المعدات',days:[1,2,4,5,6,8,10,12]},
     {id:'field',name:'التكتيكات الميدانية',days:[1,3,4,6,7,9,11,12]},
     {id:'recon',name:'الاستطلاع',days:[1,2,3,4,7,8,10,12]},
     {id:'command',name:'القيادة والسيطرة',days:[1,2,5,6,8,9,11,12]}
   ];
+  const branchesB=[
+    {id:'advanced',name:'التطوير المتقدم',days:[1,2,4,6,8,10,12]},
+    {id:'precision',name:'رفع الكفاءة',days:[1,3,5,6,9,11,12]},
+    {id:'defense',name:'الحماية والدفاع',days:[1,2,3,6,7,10,12]},
+    {id:'mobility',name:'الحركة والانتشار',days:[1,4,5,7,8,11,12]},
+    {id:'operations',name:'إدارة العمليات',days:[1,2,5,7,9,10,12]}
+  ];
   const day=Math.min(50,Math.floor(gameMinute/1440)+1);
+  const renderTree=(treeName,branches,treeIndex)=>`<section class="research-tree-card">
+    <h3>${treeName}</h3><div class="infantry-tree-grid">
+      ${Array.from({length:50},(_,i)=>{const d=i+1;return `<div class="infantry-tree-day-row ${d%2?'day-light':'day-dark'}" data-day-row="${d}">
+        <div class="infantry-day-number">${d}</div>
+        ${branches.map((branch,index)=>{const has=branch.days.includes(d);return `<div class="infantry-tree-cell"><span class="infantry-tree-line"></span>${has?`<button type="button" class="infantry-tech-node has-tech ${d===1?'day-one-tech':''}" data-tech-branch="${branch.id}" data-tech-day="${d}" data-tree-index="${treeIndex}" aria-label="${treeName}: ${branch.name}، اليوم ${d}"><img src="assets/${category.icon}" alt=""></button>`:''}</div>`;}).join('')}
+      </div>`;}).join('')}
+    </div></section>`;
   panel.classList.add('research-fullscreen','infantry-tree-screen');
-  panel.innerHTML=`<div class="panel-head"><strong>أبحاث المشاة العسكرية</strong><button class="panel-close" data-close aria-label="إغلاق">×</button></div>
+  panel.innerHTML=`<div class="panel-head"><strong>أبحاث ${category.name}</strong><button class="panel-close" data-close aria-label="إغلاق">×</button></div>
     <div class="research-tabs" role="group" aria-label="أقسام الأبحاث">
       <button class="research-tab is-active" type="button" data-research-tab="first"><span class="research-tab-image" aria-hidden="true">▧</span><b>البحث الأول</b></button>
       <button class="research-tab" type="button" data-research-tab="second"><span class="research-tab-image" aria-hidden="true">▧</span><b>البحث الثاني</b></button>
     </div>
-    <div class="infantry-tree-toolbar">
+    <div class="infantry-tree-toolbar category-tree-toolbar" style="--category-tree-image:url('assets/${category.image}')">
+      <div class="infantry-tree-title"><strong>شجرة أبحاث ${category.name}</strong></div>
       <div class="infantry-calendar"><span class="calendar-smile">📅</span><span>تقويم الحملة</span><b>اليوم ${day} / 50</b></div>
-      <div class="infantry-tree-title"><strong>شجرة أبحاث المشاة</strong></div>
     </div>
-    <div class="infantry-tree-scroll" dir="rtl" aria-label="شجرة أبحاث المشاة">
-      <div class="infantry-tree-grid">
-        ${Array.from({length:50},(_,i)=>{const d=i+1;return `<div class="infantry-tree-day-row ${d%2?'day-light':'day-dark'}" data-day-row="${d}">
-          <div class="infantry-day-number">${d}</div>
-          ${branches.map(branch=>{const has=branch.days.includes(d);return `<div class="infantry-tree-cell"><span class="infantry-tree-line"></span>${has?`<button type="button" class="infantry-tech-node has-tech ${d===1?'day-one-tech':''}" data-tech-branch="${branch.id}" data-tech-day="${d}" aria-label="بحث ${branch.name} اليوم ${d}"><img src="assets/infantry-icon.png" alt=""></button>`:''}</div>`;}).join('')}
-        </div>`;}).join('')}
-      </div>
+    <div class="category-research-trees" dir="rtl" aria-label="شجرتا أبحاث ${category.name}">
+      ${renderTree('الشجرة الأولى',branchesA,0)}${renderTree('الشجرة الثانية',branchesB,1)}
     </div>`;
   panel.querySelector('[data-close]').onclick=closePanels;
-  panel.querySelectorAll('[data-research-tab]').forEach(tab=>tab.onclick=()=>{
-    panel.querySelectorAll('[data-research-tab]').forEach(t=>t.classList.toggle('is-active',t===tab));
-  });
+  panel.querySelectorAll('[data-research-tab]').forEach(tab=>tab.onclick=()=>panel.querySelectorAll('[data-research-tab]').forEach(t=>t.classList.toggle('is-active',t===tab)));
   panel.querySelectorAll('[data-tech-day]').forEach(node=>node.onclick=()=>{
-    const branch=branches.find(b=>b.id===node.dataset.techBranch); const d=Number(node.dataset.techDay);
-    showInfantryTechDetails(branch,d);
+    const source=Number(node.dataset.treeIndex)===0?branchesA:branchesB;
+    const branch=source.find(b=>b.id===node.dataset.techBranch); const d=Number(node.dataset.techDay);
+    showCategoryTechDetails(category,branch,d,Number(node.dataset.treeIndex)+1);
   });
+}
+function renderInfantryResearch(){renderCategoryResearch('infantry');}
+function showCategoryTechDetails(category,branch,day,treeNumber){
+  const detail=$('dialogPanel'); detail.hidden=false;
+  detail.innerHTML=`<div class="dialog-head"><strong>${category.name} — ${branch.name} — اليوم ${day}</strong><button id="dialogClose" aria-label="إغلاق">×</button></div>
+    <div class="infantry-tech-detail"><div class="infantry-round-icon"><img src="assets/${category.icon}" alt=""></div>
+      <strong>${branch.name}</strong><p>بحث من الشجرة ${treeNumber} ضمن أبحاث ${category.name}. ستُضاف تفاصيل التقنية ومتطلباتها عند تحديد محتوى البحث.</p>
+      <div class="infantry-cost-section"><strong>متطلبات البحث</strong><div class="resource-costs"><span>💵 —</span><span>📟 —</span><span>⚙️ —</span></div></div>
+      <div class="research-duration">وقت البحث <b>يُحدد لاحقاً</b></div></div>`;
+  $('dialogClose').onclick=()=>detail.hidden=true;
 }
 function showInfantryTechDetails(branch,day) {
   const detail=$('dialogPanel'); detail.hidden=false;
@@ -708,6 +724,7 @@ function updateGameStatus() {
   const date=$('gameDateTime');
   if(date) date.textContent=`اليوم ${day} · ${hours}:${minutes}`;
   renderResourceStrips();
+  const campaignDayLabel=$('mainPanel').querySelector('.infantry-calendar b'); if(campaignDayLabel) campaignDayLabel.textContent=`اليوم ${Math.min(50,day)} / 50`;
   const treeDay=$('mainPanel')?.querySelector('.infantry-calendar b');
   if(treeDay) treeDay.textContent=`اليوم ${Math.min(50,day)} / 50`;
 }
