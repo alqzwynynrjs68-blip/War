@@ -383,7 +383,7 @@
 
 /* Two independent vertical research paths, sharing one day column */
 .category-two-trees{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:2px 2px 12px;scrollbar-width:thin;scrollbar-color:#92784e #101b2a}
-.category-two-tree-head,.category-two-tree-row{direction:rtl;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 48px;min-width:300px}
+.category-two-tree-head,.category-two-tree-row{direction:rtl;display:grid;grid-template-columns:44px minmax(0,1fr) minmax(0,1fr);min-width:300px}
 .category-two-tree-head{position:sticky;top:0;z-index:4;background:#14263a;border:1px solid #52647a;border-radius:7px 7px 0 0;color:#e8d3a7;text-align:center;font-size:11px;font-weight:700}
 .category-two-tree-head span{padding:9px 3px;border-left:1px solid #ffffff18}
 .category-two-tree-head span:last-child{border-left:0}
@@ -393,8 +393,8 @@
 .category-two-day-number{position:sticky;right:0;z-index:2;display:grid;place-items:center;background:#24364b;border-left:1px solid #ffffff20;color:#f0d9a7;font-weight:700}
 .category-two-tree-cell{position:relative;display:flex;align-items:center;justify-content:center;border-left:1px solid #ffffff0b}
 .category-two-tree-line{position:absolute;top:0;bottom:0;width:2px;background:linear-gradient(180deg,#b99a62aa,#748ba188);box-shadow:0 0 4px #b99a6233}
-.category-two-empty-node{position:relative;z-index:1;width:13px;height:13px;border:1px solid #9d895f;border-radius:50%;background:#142338;box-shadow:0 0 0 4px #142338aa}
-@media(max-width:700px){.category-two-tree-head,.category-two-tree-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 40px;min-width:270px}.category-two-tree-row{min-height:49px}.category-two-tree-head{font-size:10px}}
+.category-two-empty-node{position:relative;z-index:1;width:26px;height:26px;flex:0 0 26px;border:2px solid #c2a36b;border-radius:50%;background:#142338;box-shadow:0 0 0 4px #142338aa,0 0 8px #b99a6240}
+@media(max-width:700px){.category-two-tree-head,.category-two-tree-row{grid-template-columns:40px minmax(0,1fr) minmax(0,1fr);min-width:270px}.category-two-tree-row{min-height:49px}.category-two-tree-head{font-size:10px}}
 
 /* Ensure the paired research paths occupy the available panel height. */
 .category-two-tree-grid{display:block;min-width:300px;width:100%;}
