@@ -38,7 +38,17 @@ function geometryPath(g) {
 }
 function pointsToPath(points,close=false) {
   if(!Array.isArray(points)||points.length<2) return '';
-  return points.map((pt,i)=>{const [x,y]=project(pt);return (i?'L':'M')+x.toFixed(2)+','+y.toFixed(2)}).join(' ')+(close?' Z':'');
+  const p=points.map(pt=>project(pt));
+  if(close) return p.map((pt,i)=>(i?'L':'M')+pt[0].toFixed(2)+','+pt[1].toFixed(2)).join(' ')+' Z';
+  if(p.length===2) return `M${p[0][0]},${p[0][1]} L${p[1][0]},${p[1][1]}`;
+  let d=`M${p[0][0].toFixed(2)},${p[0][1].toFixed(2)}`;
+  for(let i=0;i<p.length-1;i++){
+    const a=p[Math.max(0,i-1)],b=p[i],c=p[i+1],e=p[Math.min(p.length-1,i+2)];
+    const c1=[b[0]+(c[0]-a[0])/6,b[1]+(c[1]-a[1])/6];
+    const c2=[c[0]-(e[0]-b[0])/6,c[1]-(e[1]-b[1])/6];
+    d+=` C${c1[0].toFixed(2)},${c1[1].toFixed(2)} ${c2[0].toFixed(2)},${c2[1].toFixed(2)} ${c[0].toFixed(2)},${c[1].toFixed(2)}`;
+  }
+  return d;
 }
 function addSvg(tag,attrs,parent) {
   const e=document.createElementNS(NS,tag);
@@ -235,7 +245,7 @@ function renderRegionalLand() {
   regionalLandGroup.innerHTML='';
   (regionData.land||[]).forEach(ring=>{
     const d=pointsToPath(ring,true); if(!d) return;
-    addSvg('path',{d,fill:'#18283b','fill-opacity':'.82',stroke:'none',class:'regional-land'},regionalLandGroup);
+    addSvg('path',{d,fill:'#29434a','fill-opacity':'1',stroke:'none',class:'regional-land'},regionalLandGroup);
   });
 }
 function renderRegionalWater() {
@@ -243,7 +253,8 @@ function renderRegionalWater() {
   regionalWaterGroup.innerHTML='';
   (regionData.rivers||[]).forEach(line=>{
     const d=pointsToPath(line,false); if(!d) return;
-    addSvg('path',{d,fill:'none',stroke:'#4b9fca','stroke-width':'1.15','stroke-linecap':'round','stroke-linejoin':'round','stroke-opacity':'.92','vector-effect':'non-scaling-stroke',class:'regional-river'},regionalWaterGroup);
+    addSvg('path',{d,fill:'none',stroke:'#12384b','stroke-width':'3.0','stroke-linecap':'round','stroke-linejoin':'round','stroke-opacity':'.72','vector-effect':'non-scaling-stroke',class:'regional-river-edge'},regionalWaterGroup);
+    addSvg('path',{d,fill:'none',stroke:'#55b7d4','stroke-width':'1.35','stroke-linecap':'round','stroke-linejoin':'round','stroke-opacity':'.96','vector-effect':'non-scaling-stroke',class:'regional-river'},regionalWaterGroup);
   });
 }
 function renderRegionalBorders() {
@@ -268,15 +279,18 @@ function renderRegionalLabels() {
     ['بحر العرب',61.2,17.0],['خليج عدن',48.2,13.2],['الخليج العربي',52.5,26.5],
     ['خليج عُمان',58.8,23.2],['البحر الأسود',34.0,42.4],['المحيط الهندي',62.0,13.2]
   ];
-  const riverLabels=[['دجلة',44.5,34.0],['الفرات',41.3,33.4],['النيل',31.1,25.1],['نهر الأردن',35.5,31.1]];
   const addLabel=(label,lon,lat,kind)=>{
     const [x,y]=project([lon,lat]);
-    const el=addSvg('text',{x,y,'text-anchor':'middle','dominant-baseline':'middle','font-family':'Tahoma,Arial,sans-serif','font-size':kind==='country'?'2.9':'2.55','font-weight':kind==='country'?'700':'600','letter-spacing':'.02','direction':'rtl','unicode-bidi':'plaintext',fill:kind==='country'?'#e4d4b5':kind==='water'?'#6db9dd':'#86c7e3',stroke:'#091321','stroke-width':'.62','stroke-linejoin':'round','paint-order':'stroke',class:'regional-map-label'},regionalLabelsGroup);
-    el.textContent=label;
+    const width=kind==='country'?Math.max(15,label.length*2.2):Math.max(22,label.length*2.0);
+    const fo=addSvg('foreignObject',{x:(x-width/2).toFixed(2),y:(y-2.7).toFixed(2),width:width.toFixed(2),height:'5.8',class:'regional-map-label'},regionalLabelsGroup);
+    const div=document.createElement('div');
+    div.setAttribute('xmlns','http://www.w3.org/1999/xhtml');
+    div.setAttribute('dir','rtl');
+    div.style.cssText=`width:100%;height:100%;display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:visible;text-align:center;font-family:Tahoma,Arial,sans-serif;font-size:${kind==='country'?'3.0':'2.6'}px;font-weight:${kind==='country'?'700':'600'};line-height:1;color:${kind==='country'?'#f0dfbd':'#8bd0ec'};text-shadow:-.55px -.55px #102333,.55px -.55px #102333,-.55px .55px #102333,.55px .55px #102333;`;
+    div.textContent=label; fo.appendChild(div);
   };
   countryLabels.forEach(v=>addLabel(v[0],v[1],v[2],'country'));
   waterLabels.forEach(v=>addLabel(v[0],v[1],v[2],'water'));
-  riverLabels.forEach(v=>addLabel(v[0],v[1],v[2],'river'));
 }
 
 function renderMap() {
@@ -286,7 +300,7 @@ function renderMap() {
   cityMarkerLayer.setAttribute('aria-label','نقاط مواقع المدن');
   cityMarkerLayer.style.cssText='position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:5;';
   map.appendChild(cityMarkerLayer);
-  addSvg('rect',{x:0,y:0,width:1000,height:650,fill:'#091321'},svg);
+  addSvg('rect',{x:0,y:0,width:1000,height:650,fill:'#0b3b56'},svg);
   regionalLandGroup=addSvg('g',{},svg); renderRegionalLand();
   baseGroup=addSvg('g',{},svg);
   regionalWaterGroup=addSvg('g',{'pointer-events':'none'},svg); renderRegionalWater();
@@ -296,7 +310,7 @@ function renderMap() {
   geo.features.forEach(feature=>{
     const id=feature.properties.iso_a3;
     if(!allCountries.some(c=>c.id===id)) return;
-    const path=addSvg('path',{d:geometryPath(feature.geometry),fill:'#18283b','fill-opacity':'.78',stroke:'none',class:'country-shape','data-id':id},baseGroup);
+    const path=addSvg('path',{d:geometryPath(feature.geometry),fill:'#30464d','fill-opacity':'.94',stroke:'none',class:'country-shape','data-id':id},baseGroup);
     path.addEventListener('click',()=>{
       if(!selectedCountry) return;
       if(id!==selectedCountry.id) showToast('لا يمكنك تغيير دولتك أثناء اللعب. استخدم زر الرجوع.');
