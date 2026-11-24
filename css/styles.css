@@ -256,14 +256,22 @@
 .world-wrap-toggle.is-off{border-color:#4b9b79;color:#b9e8d0;background:#102b25ed}
 .world-wrap-toggle:active{transform:translateY(1px)}
 
-/* City GPS focus and consistent city-detail action artwork */
-.focused-city-ring{position:absolute;width:48px;height:48px;transform:translate(-50%,-50%);border:3px solid #ffe08a;border-radius:50%;box-shadow:0 0 0 5px #f2bd4b35,0 0 22px 8px #ffd66b99;z-index:8;pointer-events:none;animation:focusedCityPulse 1.35s ease-in-out infinite;display:grid;place-items:center}
-.focused-city-ring span{width:9px;height:9px;border-radius:50%;background:#fff4c2;box-shadow:0 0 10px 4px #ffdc76}
-@keyframes focusedCityPulse{0%,100%{scale:1;opacity:1}50%{scale:1.22;opacity:.78}}
-.city-operation .operation-icon{filter:none!important;opacity:1!important;visibility:visible!important}
-.city-operation .operation-icon svg{display:block;visibility:visible;opacity:1}
-.city-detail-actions{gap:7px;margin-top:2px}
-.selection-operation{min-height:54px;padding:7px!important}
-.selection-operation .operation-icon{width:36px;height:36px;flex-basis:36px}
-.selection-operation .operation-copy b{font-size:11px}
-.selection-operation .operation-copy small{font-size:9px}
+/* Military research category menu */
+.research-tabs{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:10px 0 12px}
+.research-tab{display:flex;align-items:center;justify-content:center;gap:10px;min-height:54px;padding:7px 10px;border:1px solid #88734f;border-radius:9px;background:linear-gradient(135deg,#202a39,#111c2c);color:#f0e7d6;box-shadow:inset 0 1px #ffffff18,0 3px 9px #0005}
+.research-tab.is-active{border-color:#d8bd83;background:linear-gradient(135deg,#244e79,#142a43);box-shadow:inset 0 0 18px #7ab9ed20,0 0 0 1px #d8bd8330}
+.research-tab-image{display:grid;place-items:center;width:34px;height:31px;border:1px solid #b7c5d3;border-radius:4px;color:#e8edf3;font-size:23px;line-height:1;background:#ffffff0c}
+.research-tab b{font-size:13px}
+.research-list{gap:7px;max-height:min(43dvh,390px);overflow-y:auto;overscroll-behavior:contain;padding:1px 2px 5px;scrollbar-width:thin;scrollbar-color:#8b754e #111c2b}
+.research-category-button{position:relative;isolation:isolate;display:flex;align-items:center;justify-content:flex-start;gap:10px;width:100%;min-height:76px;padding:6px 9px;border:1px solid #b99a62;border-radius:12px;overflow:hidden;background:linear-gradient(100deg,#26394d,#111e30 76%);color:#f4f6f9;text-align:right;box-shadow:inset 0 1px #ffffff25,0 3px 9px #0007;flex-shrink:0}
+.research-category-button:active{border-color:#f1d59b;filter:brightness(1.16)}
+.research-category-art{position:absolute;z-index:-2;inset:0 auto 0 0;width:70%;background-size:cover;background-position:center 48%;}
+.research-category-button:before{content:"";position:absolute;z-index:-1;inset:0;background:linear-gradient(90deg,transparent 0%,#111c2c35 34%,#111c2cf0 67%,#111c2c 100%)}
+.research-category-copy{display:flex;align-items:center;justify-content:flex-start;flex:1;min-width:0;padding-inline:5px}
+.research-category-copy b{font-size:clamp(13px,2.5vw,17px);font-weight:800;text-shadow:0 2px 5px #000;white-space:normal;line-height:1.35}
+.research-category-logo{display:grid;place-items:center;flex:0 0 58px;width:58px;height:58px;border:2px solid #d8c18f;border-radius:50%;background:radial-gradient(circle at 35% 25%,#536174,#111a28 74%);box-shadow:0 0 0 2px #0b1420,0 3px 9px #0009,inset 0 1px #fff5;overflow:hidden}
+.research-category-logo img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+@media(max-width:700px){
+ .research-tabs{gap:7px;padding:9px 0 10px}.research-tab{min-height:48px;gap:7px;padding:6px}.research-tab b{font-size:12px}.research-tab-image{width:30px;height:28px;font-size:21px}
+ .research-list{max-height:40dvh;gap:6px}.research-category-button{min-height:66px;padding:4px 7px;gap:7px;border-radius:10px}.research-category-logo{width:50px;height:50px;flex-basis:50px}.research-category-copy b{font-size:14px}
+}
