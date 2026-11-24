@@ -98,7 +98,7 @@ function scheduleViewUpdate() {
   viewRenderFrame=requestAnimationFrame(()=>{viewRenderFrame=0;updateView();});
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2,defer=false) {
-  const minW=overviewViewWidth/60.0,maxW=overviewViewWidth/5.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
+  const minW=overviewViewWidth/37.0,maxW=overviewViewWidth/5.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
   view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; constrainCamera();
   if(defer) scheduleViewUpdate(); else updateView();
@@ -126,7 +126,7 @@ function updateView() {
       path.setAttribute('stroke-opacity',opacity.toFixed(3));
     });
     if(urbanPlanGroup) urbanPlanGroup.style.visibility=zoomLevel>=14.5?'visible':'hidden';
-    const t=zoomLevel>=41.0?1:0;
+    const t=zoomLevel>=28.0?1:0;
     wrapCopies.forEach(copy=>{
       if(copy.index===1){
         copy.left.style.opacity=String(t); copy.right.style.opacity=String(t);
@@ -490,7 +490,7 @@ function showBottomPanel(id) {
 function closePanels() {
   $('selectionPanel').style.cssText='';
   activePanel=null; activeDialog=null;
-  $('mainPanel').hidden=true; $('mainPanel').classList.remove('research-fullscreen'); $('selectionPanel').hidden=true; $('dialogPanel').hidden=true;
+  $('mainPanel').hidden=true; $('mainPanel').classList.remove('research-fullscreen','infantry-tree-screen'); $('selectionPanel').hidden=true; $('dialogPanel').hidden=true;
   $('bottomNav').hidden=false;
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
 }
@@ -613,40 +613,48 @@ function renderResearch() {
   });
 }
 function renderInfantryResearch() {
-  $('dialogPanel').hidden=false;
-  $('dialogPanel').innerHTML=`
-    <div class="dialog-head"><strong>أبحاث المشاة</strong><button id="dialogClose" aria-label="إغلاق">×</button></div>
-    <div class="infantry-research-top">
-      <button class="infantry-round-icon" id="infantryInfoButton" aria-label="معلومات جندي المشاة">🪖</button>
-      <strong>تطوير جندي المشاة</strong>
-      <small>اضغط على أيقونة الجندي لعرض مهامه</small>
+  const panel=$('mainPanel');
+  const branches=[
+    {id:'core',name:'التدريب الأساسي',days:[1,2,3,5,7,9,12]},
+    {id:'weapons',name:'تطوير الأسلحة',days:[1,2,4,5,6,8,10,12]},
+    {id:'field',name:'التكتيكات الميدانية',days:[1,3,4,6,7,9,11,12]},
+    {id:'recon',name:'الاستطلاع',days:[1,2,3,4,7,8,10,12]},
+    {id:'command',name:'القيادة والسيطرة',days:[1,2,5,6,8,9,11,12]}
+  ];
+  const day=Math.min(50,Math.floor(gameMinute/1440)+1);
+  panel.classList.add('research-fullscreen','infantry-tree-screen');
+  panel.innerHTML=`<div class="panel-head"><strong>أبحاث المشاة العسكرية</strong><button class="panel-close" data-close aria-label="إغلاق">×</button></div>
+    <div class="research-tabs" role="group" aria-label="أقسام الأبحاث">
+      <button class="research-tab is-active" type="button" data-research-tab="first"><span class="research-tab-image" aria-hidden="true">▧</span><b>البحث الأول</b></button>
+      <button class="research-tab" type="button" data-research-tab="second"><span class="research-tab-image" aria-hidden="true">▧</span><b>البحث الثاني</b></button>
     </div>
-    <div class="infantry-cost-section"><strong>متطلبات البحث</strong>
-      <div class="resource-costs"><span>💵 1,000</span><span>📟 150</span><span>⚙️ 250</span></div>
+    <div class="infantry-tree-toolbar">
+      <div class="infantry-tree-title"><img src="assets/infantry-icon.png" alt=""><strong>شجرة أبحاث المشاة</strong></div>
+      <div class="infantry-calendar"><span class="calendar-smile">📅</span><span>تقويم الحملة</span><b>اليوم ${day} / 50</b></div>
     </div>
-    <div class="infantry-cost-section maintenance-section"><strong>الصيانة اليومية</strong>
-      <div class="resource-costs"><span>💵 50</span><span>📟 5</span><span>⚙️ 10</span></div>
-    </div>
-    <div class="research-duration">وقت البحث <b>دقيقة واحدة</b></div>
-    <div id="infantryResearchStatus" class="research-status" aria-live="polite">${infantryResearch.status==='completed'?'تم إكمال البحث':infantryResearch.status==='running'?'البحث جارٍ...':'جاهز للبحث'}</div>
-    <button id="startInfantryResearch" class="start-research-button" ${infantryResearch.status!=='available'?'disabled':''}>${infantryResearch.status==='completed'?'تم البحث':infantryResearch.status==='running'?'جارٍ البحث...':'بحث'}</button>`;
-  $('dialogClose').onclick=()=>$('dialogPanel').hidden=true;
-  $('infantryInfoButton').onclick=()=>{
-    const existing=$('infantryDescription');
-    if(existing){existing.remove();return;}
-    const info=document.createElement('div'); info.id='infantryDescription'; info.className='infantry-description';
-    info.textContent='هذا جندي مشاة يستطيع الدفاع عن الأراضي، ومهاجمة الأعداء، واحتلال الأراضي.';
-    $('infantryInfoButton').parentNode.insertAdjacentElement('afterend',info);
-  };
-  $('startInfantryResearch').onclick=()=>{
-    if(infantryResearch.status!=='available') return;
-    if(resources.money<1000||resources.electronics<150||resources.iron<250){showToast('الموارد غير كافية لإجراء البحث');return;}
-    resources.money-=1000; resources.electronics-=150; resources.iron-=250;
-    infantryResearch={status:'running',completesAt:gameMinute+1};
-    updateGameStatus();
-    $('startInfantryResearch').disabled=true; $('startInfantryResearch').textContent='جارٍ البحث...';
-    $('infantryResearchStatus').textContent='البحث جارٍ...';
-  };
+    <div class="infantry-tree-scroll" dir="rtl" aria-label="شجرة أبحاث المشاة">
+      <div class="infantry-tree-columns">${branches.map((branch,index)=>`<section class="infantry-tree-branch" data-branch="${branch.id}">
+        <h3>${branch.name}</h3><div class="infantry-tree-nodes">${Array.from({length:12},(_,i)=>{const d=i+1,has=branch.days.includes(d);return `<div class="infantry-tree-step"><span class="tree-day-label">${d}</span><button type="button" class="infantry-tech-node ${has?'has-tech':'empty-tech'} ${d===1&&index===0?'first-empty-node':''}" data-tech-branch="${branch.id}" data-tech-day="${d}" aria-label="${has?`بحث ${branch.name} اليوم ${d}`:`موضع بحث فارغ اليوم ${d}`}" ${has?'':'disabled'}>${has?`<img src="assets/infantry-icon.png" alt="">`:'<span></span>'}</button>${d<12?'<i class="infantry-tree-connector"></i>':''}</div>`;}).join('')}</div>
+      </section>`).join('')}</div>
+    </div>`;
+  panel.querySelector('[data-close]').onclick=closePanels;
+  panel.querySelectorAll('[data-research-tab]').forEach(tab=>tab.onclick=()=>{
+    panel.querySelectorAll('[data-research-tab]').forEach(t=>t.classList.toggle('is-active',t===tab));
+  });
+  panel.querySelectorAll('[data-tech-day]').forEach(node=>node.onclick=()=>{
+    const branch=branches.find(b=>b.id===node.dataset.techBranch); const d=Number(node.dataset.techDay);
+    showInfantryTechDetails(branch,d);
+  });
+}
+function showInfantryTechDetails(branch,day) {
+  const detail=$('dialogPanel'); detail.hidden=false;
+  detail.innerHTML=`<div class="dialog-head"><strong>${branch.name} — اليوم ${day}</strong><button id="dialogClose" aria-label="إغلاق">×</button></div>
+    <div class="infantry-tech-detail"><div class="infantry-round-icon"><img src="assets/infantry-icon.png" alt=""></div>
+      <strong>بحث ${branch.name}</strong><p>هذا البحث جزء من شجرة تطوير قوات المشاة. ستُضاف تفاصيل التقنية ومتطلباتها عند تحديد محتوى البحث.</p>
+      <div class="infantry-cost-section"><strong>متطلبات البحث</strong><div class="resource-costs"><span>💵 —</span><span>📟 —</span><span>⚙️ —</span></div></div>
+      <div class="research-duration">وقت البحث <b>يُحدد لاحقاً</b></div>
+    </div>`;
+  $('dialogClose').onclick=()=>detail.hidden=true;
 }
 function startNewCampaignClock() {
   stopCampaignClock();
@@ -683,6 +691,8 @@ function updateGameStatus() {
   const date=$('gameDateTime');
   if(date) date.textContent=`اليوم ${day} · ${hours}:${minutes}`;
   renderResourceStrips();
+  const treeDay=$('mainPanel')?.querySelector('.infantry-calendar b');
+  if(treeDay) treeDay.textContent=`اليوم ${Math.min(50,day)} / 50`;
 }
 function recalculateEconomy() {
   resourceProduction={}; resourceConsumption={};
