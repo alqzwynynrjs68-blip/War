@@ -241,10 +241,6 @@ function renderRegionalLand() {
 function renderRegionalWater() {
   if(!regionalWaterGroup||!regionData) return;
   regionalWaterGroup.innerHTML='';
-  (regionData.lakes||[]).forEach(ring=>{
-    const d=pointsToPath(ring,true); if(!d) return;
-    addSvg('path',{d,fill:'#091321',stroke:'#34799b','stroke-width':'.8','stroke-opacity':'.9','vector-effect':'non-scaling-stroke',class:'regional-lake'},regionalWaterGroup);
-  });
   (regionData.rivers||[]).forEach(line=>{
     const d=pointsToPath(line,false); if(!d) return;
     addSvg('path',{d,fill:'none',stroke:'#4b9fca','stroke-width':'1.15','stroke-linecap':'round','stroke-linejoin':'round','stroke-opacity':'.92','vector-effect':'non-scaling-stroke',class:'regional-river'},regionalWaterGroup);
@@ -270,10 +266,9 @@ function renderRegionalLabels() {
   const waterLabels=[
     ['البحر المتوسط',29.0,34.4],['البحر الأحمر',37.0,23.0],['بحر قزوين',52.0,40.0],
     ['بحر العرب',61.2,17.0],['خليج عدن',48.2,13.2],['الخليج العربي',52.5,26.5],
-    ['خليج عُمان',58.8,23.2],['البحر الأسود',34.0,42.4]
+    ['خليج عُمان',58.8,23.2],['البحر الأسود',34.0,42.4],['المحيط الهندي',62.0,13.2]
   ];
   const riverLabels=[['دجلة',44.5,34.0],['الفرات',41.3,33.4],['النيل',31.1,25.1],['نهر الأردن',35.5,31.1]];
-  const lakeLabels=[['بحيرة وان',42.8,38.6],['بحيرة أورمية',45.5,37.6],['البحر الميت',35.5,31.5]];
   const addLabel=(label,lon,lat,kind)=>{
     const [x,y]=project([lon,lat]);
     const el=addSvg('text',{x,y,'text-anchor':'middle','dominant-baseline':'middle','font-family':'Tahoma,Arial,sans-serif','font-size':kind==='country'?'2.9':'2.55','font-weight':kind==='country'?'700':'600','letter-spacing':'.02','direction':'rtl','unicode-bidi':'plaintext',fill:kind==='country'?'#e4d4b5':kind==='water'?'#6db9dd':'#86c7e3',stroke:'#091321','stroke-width':'.62','stroke-linejoin':'round','paint-order':'stroke',class:'regional-map-label'},regionalLabelsGroup);
@@ -282,7 +277,6 @@ function renderRegionalLabels() {
   countryLabels.forEach(v=>addLabel(v[0],v[1],v[2],'country'));
   waterLabels.forEach(v=>addLabel(v[0],v[1],v[2],'water'));
   riverLabels.forEach(v=>addLabel(v[0],v[1],v[2],'river'));
-  lakeLabels.forEach(v=>addLabel(v[0],v[1],v[2],'river'));
 }
 
 function renderMap() {
