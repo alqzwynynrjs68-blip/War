@@ -433,56 +433,47 @@ function escapeChatText(value) {
   return String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
 function renderResearch() {
-  $('mainPanel').innerHTML=`<div class="panel-head"><strong>الأبحاث</strong><button class="panel-close" data-close>×</button></div>
-    <div class="panel-content research-list">
-      <button class="research-choice research-choice-banner" id="infantryChoice">
-        <span class="research-art" aria-hidden="true"><span class="research-art-glow"></span><span class="research-art-soldier">🪖</span></span>
-        <span class="research-copy"><span class="research-icon">♜</span><b>المشاة</b><small>قوات برية أساسية للاستيلاء على الأراضي والدفاع عن المدن</small></span>
-      </button>
-    </div>`;
+  $('mainPanel').innerHTML=`<div class="panel-head"><strong>الأبحاث</strong><button class="panel-close" data-close>×</button></div><div class="panel-content research-list"><button class="research-choice research-choice-banner" id="infantryChoice"><span class="research-art" aria-hidden="true"><span class="research-art-glow"></span><span class="research-art-soldier">🪖</span></span><span class="research-copy"><span class="research-icon">♜</span><b>المشاة</b><small>شجرة أبحاث قوات المشاة وتطوير قدراتها</small></span></button></div>`;
   $('mainPanel').querySelector('[data-close]').onclick=closePanels;
   $('infantryChoice').onclick=renderInfantryResearch;
 }
-function renderInfantryResearch() {
-  $('dialogPanel').hidden=false;
-  $('dialogPanel').innerHTML=`
-    <div class="dialog-head"><strong>أبحاث المشاة</strong><button id="dialogClose" aria-label="إغلاق">×</button></div>
-    <div class="infantry-research-top">
-      <button class="infantry-round-icon" id="infantryInfoButton" aria-label="معلومات جندي المشاة">🪖</button>
-      <strong>تطوير جندي المشاة</strong>
-      <small>اضغط على أيقونة الجندي لعرض مهامه</small>
-    </div>
-    <div class="infantry-cost-section"><strong>متطلبات البحث</strong>
-      <div class="resource-costs"><span>💵 1,000</span><span>📟 150</span><span>⚙️ 250</span></div>
-    </div>
-    <div class="infantry-cost-section maintenance-section"><strong>الصيانة اليومية</strong>
-      <div class="resource-costs"><span>💵 50</span><span>📟 5</span><span>⚙️ 10</span></div>
-    </div>
-    <div class="research-duration">وقت البحث <b>دقيقة واحدة</b></div>
-    <div id="infantryResearchStatus" class="research-status" aria-live="polite">${infantryResearch.status==='completed'?'تم إكمال البحث':infantryResearch.status==='running'?'البحث جارٍ...':'جاهز للبحث'}</div>
-    <button id="startInfantryResearch" class="start-research-button" ${infantryResearch.status!=='available'?'disabled':''}>${infantryResearch.status==='completed'?'تم البحث':infantryResearch.status==='running'?'جارٍ البحث...':'بحث'}</button>`;
-  $('dialogClose').onclick=()=>$('dialogPanel').hidden=true;
-  $('infantryInfoButton').onclick=()=>{
-    const existing=$('infantryDescription');
-    if(existing){existing.remove();return;}
-    const info=document.createElement('div'); info.id='infantryDescription'; info.className='infantry-description';
-    info.textContent='هذا جندي مشاة يستطيع الدفاع عن الأراضي، ومهاجمة الأعداء، واحتلال الأراضي.';
-    $('infantryInfoButton').parentNode.insertAdjacentElement('afterend',info);
-  };
-  $('startInfantryResearch').onclick=()=>{
-    if(infantryResearch.status!=='available') return;
-    if(resources.money<1000||resources.electronics<150||resources.iron<250){showToast('الموارد غير كافية لإجراء البحث');return;}
-    resources.money-=1000; resources.electronics-=150; resources.iron-=250;
-    infantryResearch={status:'running',completesAt:gameMinute+1};
-    updateGameStatus();
-    $('startInfantryResearch').disabled=true; $('startInfantryResearch').textContent='جارٍ البحث...';
-    $('infantryResearchStatus').textContent='البحث جارٍ...';
-  };
+const INFANTRY_RESEARCHES={
+ infantry:{name:'جندي المشاة',icon:'🪖',day:1,cost:{money:1000,electronics:150,iron:250},description:'جندي مشاة يستطيع الدفاع عن الأراضي ومهاجمة الأعداء واحتلال الأراضي.'},
+ health:{name:'زيادة صحة الجندي',icon:'✚',day:3,cost:{money:1250,electronics:188,iron:313},description:'تطوير قدرة جندي المشاة على تحمّل الضرر والبقاء في المعركة.'},
+ power:{name:'زيادة قوة الجندي',icon:'⚔️',day:3,cost:{money:1250,electronics:188,iron:313},description:'تطوير القوة القتالية لجندي المشاة وزيادة قدرته الهجومية.'}
+};
+let infantryTech={infantry:'available',health:'locked',power:'locked'},selectedInfantryTech='infantry',activeInfantryTech=null,infantryTechCompletesAt=null,infantryTechStartedAt=null;
+function currentGameDay(){return Math.floor(gameMinute/1440)+1;}
+function techIsUnlocked(key){return key==='infantry'||(currentGameDay()>=INFANTRY_RESEARCHES[key].day&&infantryTech.infantry==='completed');}
+function renderInfantryResearch(){
+ const panel=$('dialogPanel'),selected=INFANTRY_RESEARCHES[selectedInfantryTech],state=infantryTech[selectedInfantryTech],cost=selected.cost,unlocked=techIsUnlocked(selectedInfantryTech),running=activeInfantryTech?INFANTRY_RESEARCHES[activeInfantryTech]:null,remaining=running?Math.max(0,infantryTechCompletesAt-gameMinute):0;
+ panel.hidden=false;panel.classList.add('research-tree-screen');
+ const status=state==='completed'?'مكتمل':state==='running'?'قيد البحث':!unlocked?'يفتح في اليوم '+selected.day:'متاح للبحث';
+ const canStart=unlocked&&state==='available'&&!activeInfantryTech;
+ panel.innerHTML=`<div class="research-tree-head"><div><small>مركز التطوير العسكري</small><strong>شجرة أبحاث المشاة</strong></div><button id="dialogClose" aria-label="إغلاق">×</button></div>
+ <div class="research-top-cards">
+ <section class="research-top-card active-research-card"><div class="research-card-label">البحث الجاري</div>${running?`<div class="research-running-unit"><span>${running.icon}</span><div><b>${running.name}</b><small id="researchActiveRemaining">الوقت المتبقي: ${remaining} دقيقة</small></div></div><div class="research-progress"><i id="researchActiveProgress" style="width:${Math.min(100,Math.max(0,(1-remaining)*100))}%"></i></div>`:'<div class="research-empty">لا يوجد بحث جارٍ حالياً</div>'}</section>
+ <section class="research-top-card selected-research-card"><div class="research-card-label">البحث المحدد</div><div class="research-running-unit"><span>${selected.icon}</span><div><b>${selected.name}</b><small>${status}</small></div></div><div class="research-mini-costs">💵 ${cost.money.toLocaleString('en-US')}　📟 ${cost.electronics}　⚙️ ${cost.iron}</div><button id="startSelectedTech" class="start-research-button" ${canStart?'':'disabled'}>${state==='completed'?'مكتمل':state==='running'?'قيد البحث':!unlocked?'مقفل حتى اليوم '+selected.day:activeInfantryTech?'يوجد بحث جارٍ':'بحث'}</button></section></div>
+ <div class="research-tree-subhead"><strong>تسلسل تطوير المشاة</strong><span>اليوم ${currentGameDay()}</span></div>
+ <div class="research-tree-scroll"><div class="research-timeline">
+ <div class="research-day-label">اليوم 1</div><div class="research-node-row"><button class="research-node ${selectedInfantryTech==='infantry'?'selected':''} ${infantryTech.infantry==='completed'?'completed':''}" data-tech="infantry"><span class="research-node-icon">🪖</span><b>جندي المشاة</b><small>${infantryTech.infantry==='completed'?'مكتمل':'البحث الأساسي'}</small></button></div>
+ <div class="research-connector"></div><div class="research-day-label">اليوم 2</div><div class="research-day-empty">لا توجد أبحاث متاحة في هذا اليوم</div><div class="research-connector"></div>
+ <div class="research-day-label">اليوم 3</div><div class="research-upgrade-branches"><button class="research-node upgrade-node ${selectedInfantryTech==='health'?'selected':''} ${infantryTech.health==='completed'?'completed':''} ${!techIsUnlocked('health')?'locked':''}" data-tech="health"><span class="research-node-icon">✚</span><b>زيادة الصحة</b><small>${infantryTech.health==='completed'?'مكتمل':techIsUnlocked('health')?'تطوير الجندي':'مقفل'}</small></button><button class="research-node upgrade-node ${selectedInfantryTech==='power'?'selected':''} ${infantryTech.power==='completed'?'completed':''} ${!techIsUnlocked('power')?'locked':''}" data-tech="power"><span class="research-node-icon">⚔️</span><b>زيادة القوة</b><small>${infantryTech.power==='completed'?'مكتمل':techIsUnlocked('power')?'تطوير الجندي':'مقفل'}</small></button></div></div></div>
+ <div class="research-detail-strip"><div class="research-detail-title"><span>${selected.icon}</span><div><b>${selected.name}</b><small>${selected.description}</small></div></div><div class="research-detail-meta"><span>المتطلبات: 💵 ${cost.money.toLocaleString('en-US')}　📟 ${cost.electronics}　⚙️ ${cost.iron}</span><span>المدة: دقيقة واحدة</span></div></div>`;
+ $('dialogClose').onclick=()=>{panel.hidden=true;panel.classList.remove('research-tree-screen');};
+ panel.querySelectorAll('[data-tech]').forEach(btn=>btn.onclick=()=>{selectedInfantryTech=btn.dataset.tech;renderInfantryResearch();});
+ $('startSelectedTech').onclick=()=>startInfantryTech(selectedInfantryTech);
+}
+function startInfantryTech(key){
+ const tech=INFANTRY_RESEARCHES[key];if(!tech||!techIsUnlocked(key)||infantryTech[key]!=='available'||activeInfantryTech)return;
+ const c=tech.cost;if(resources.money<c.money||resources.electronics<c.electronics||resources.iron<c.iron){showToast('الموارد غير كافية لإجراء البحث');return;}
+ resources.money-=c.money;resources.electronics-=c.electronics;resources.iron-=c.iron;infantryTech[key]='running';activeInfantryTech=key;infantryTechCompletesAt=gameMinute+1;infantryTechStartedAt=Date.now();updateGameStatus();renderInfantryResearch();
 }
 function startNewCampaignClock() {
   stopCampaignClock();
   resources={...STARTING_RESOURCES};
   infantryResearch={status:'available',completesAt:null};
+  infantryTech={infantry:'available',health:'locked',power:'locked'}; selectedInfantryTech='infantry'; activeInfantryTech=null; infantryTechCompletesAt=null; infantryTechStartedAt=null;
   gameStartedAt=Date.now(); gameMinute=0;
   updateGameStatus();
   gameClockTimer=window.setInterval(updateCampaignClock,1000);
@@ -495,11 +486,14 @@ function updateCampaignClock() {
   if(gameStartedAt===null) return;
   // One in-game minute passes every five real seconds (one game hour = five real minutes).
   gameMinute=Math.floor((Date.now()-gameStartedAt)/5000);
-  if(infantryResearch.status==='running' && gameMinute>=infantryResearch.completesAt) {
-    infantryResearch={status:'completed',completesAt:null};
-    if(!$('dialogPanel').hidden && $('dialogPanel').querySelector('#infantryResearchStatus')) renderInfantryResearch();
-    showToast('اكتمل بحث المشاة');
+  if(activeInfantryTech && gameMinute>=infantryTechCompletesAt) {
+    const completed=activeInfantryTech; infantryTech[completed]='completed';
+    if(completed==='infantry'){infantryTech.health='available';infantryTech.power='available';}
+    activeInfantryTech=null; infantryTechCompletesAt=null; infantryTechStartedAt=null;
+    if(!$('dialogPanel').hidden && $('dialogPanel').classList.contains('research-tree-screen')) renderInfantryResearch();
+    showToast('اكتمل البحث: '+INFANTRY_RESEARCHES[completed].name);
   }
+  if(activeInfantryTech){const label=$('researchActiveRemaining');const bar=$('researchActiveProgress');const progress=Math.min(100,Math.max(0,((Date.now()-infantryTechStartedAt)/5000)*100));if(label)label.textContent='مدة البحث: دقيقة واحدة';if(bar)bar.style.width=progress+'%';}
   updateGameStatus();
 }
 function updateGameStatus() {
