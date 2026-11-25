@@ -19,10 +19,7 @@ let view = {x:0,y:0,w:1000,h:650};
 let selectedCountry = null, selectedRegion = null;
 let adminPaths = [], countryBorderPaths = [], wrapCopies = [], cityMarkerNodes = [], cityMarkerLayer = null, overviewViewWidth = 222, overviewBounds = null;
 let worldWrapEnabled = true;
-let worldDetailsEnabled = true;
-try { worldWrapEnabled = localStorage.getItem('wd-world-wrap') !== 'off'; worldDetailsEnabled = localStorage.getItem('wd-world-details') !== 'off'; } catch (_) {}
-const WORLD_DETAIL_EXEMPT = new Set(['IRQ','KWT','IRN']);
-let fullGeoFeatures = null, fullAdminFeatures = null, fullCapitalData = null;
+try { worldWrapEnabled = localStorage.getItem('wd-world-wrap') !== 'off'; } catch (_) {}
 let toastTimer = null;
 let viewRenderFrame = 0, lastStyledZoom = null, lastStyledCountry = null;
 let activePanel = null, diplomacyTab = 'countries', activeDiplomacyCountry = null;
@@ -360,25 +357,6 @@ function installWorldWrapButton() {
   button.id='worldWrapToggle'; button.type='button'; button.className='world-wrap-toggle';
   button.addEventListener('click',()=>setWorldWrapEnabled(!worldWrapEnabled));
   map.appendChild(button); updateWorldWrapButton();
-  const details=document.createElement('button'); details.id='worldDetailsToggle'; details.type='button'; details.className='world-details-toggle';
-  details.addEventListener('click',()=>setWorldDetailsEnabled(!worldDetailsEnabled)); map.appendChild(details); updateWorldDetailsButton();
-}
-function updateWorldDetailsButton(){const b=$('worldDetailsToggle');if(!b)return;b.setAttribute('aria-pressed',String(worldDetailsEnabled));b.innerHTML=`<span aria-hidden="true">🌍</span><b>تفاصيل العالم ${worldDetailsEnabled?'مفعّلة':'متوقفة'}</b>`;b.classList.toggle('is-off',!worldDetailsEnabled);}
-async function setWorldDetailsEnabled(enabled){
-  if(worldDetailsEnabled===!!enabled)return; worldDetailsEnabled=!!enabled;try{localStorage.setItem('wd-world-details',worldDetailsEnabled?'on':'off');}catch(_){}
-  const oldView={...view};
-  if(!worldDetailsEnabled){
-    if(!fullGeoFeatures)fullGeoFeatures=geo.features;if(!fullAdminFeatures)fullAdminFeatures=adminGeo.features;if(!fullCapitalData)fullCapitalData=window.WD_CAPITALS;
-    geo={...geo,features:fullGeoFeatures.filter(f=>WORLD_DETAIL_EXEMPT.has(f.properties?.iso_a3))};
-    adminGeo={...adminGeo,features:fullAdminFeatures.filter(f=>WORLD_DETAIL_EXEMPT.has(f.properties?.shapeGroup))};
-    CITY_MARKERS=[...IRAQ_CITY_MARKERS,...buildWorldCapitalMarkers().filter(c=>WORLD_DETAIL_EXEMPT.has(c.countryId))];
-    window.WD_COUNTRIES=geo;window.WD_ADMIN_REGIONS=adminGeo;window.WD_CAPITALS=(fullCapitalData||[]).filter(c=>WORLD_DETAIL_EXEMPT.has(c.country));
-    ['js/map-data.js','js/admin-data.js','js/capital-data.js'].forEach(src=>{document.querySelectorAll('script[src]').forEach(el=>{if(el.getAttribute('src')===src)el.remove();});});
-  }else{
-    geo=null;adminGeo=null;window.WD_COUNTRIES=null;window.WD_ADMIN_REGIONS=null;window.WD_CAPITALS=null;fullGeoFeatures=null;fullAdminFeatures=null;fullCapitalData=null;worldDataLoadPromise=null;
-    try{await loadWorldData();CITY_MARKERS=[...IRAQ_CITY_MARKERS,...buildWorldCapitalMarkers()];}catch(e){worldDetailsEnabled=false;try{localStorage.setItem('wd-world-details','off');}catch(_){}showToast('تعذر تحميل تفاصيل العالم');updateWorldDetailsButton();return;}
-  }
-  renderMap();view=oldView;constrainCamera();updateView();installWorldWrapButton();updateWorldDetailsButton();showToast(worldDetailsEnabled?'تم تحميل تفاصيل العالم':'تم إيقاف تفاصيل العالم مع إبقاء العراق والكويت وإيران');
 }
 
 function renderMap() {
@@ -472,8 +450,6 @@ function loadWorldData() {
     CITY_MARKERS=[...IRAQ_CITY_MARKERS,...buildWorldCapitalMarkers()];
     if(!geo||!Array.isArray(geo.features)||!adminGeo||!Array.isArray(adminGeo.features)||!Array.isArray(window.WD_CAPITALS))
       throw new Error('بيانات خريطة العالم غير مكتملة');
-    if(!fullGeoFeatures)fullGeoFeatures=geo.features;if(!fullAdminFeatures)fullAdminFeatures=adminGeo.features;if(!fullCapitalData)fullCapitalData=window.WD_CAPITALS;
-    if(!worldDetailsEnabled){geo={...geo,features:fullGeoFeatures.filter(f=>WORLD_DETAIL_EXEMPT.has(f.properties?.iso_a3))};adminGeo={...adminGeo,features:fullAdminFeatures.filter(f=>WORLD_DETAIL_EXEMPT.has(f.properties?.shapeGroup))};window.WD_CAPITALS=fullCapitalData.filter(c=>WORLD_DETAIL_EXEMPT.has(c.country));CITY_MARKERS=[...IRAQ_CITY_MARKERS,...buildWorldCapitalMarkers().filter(c=>WORLD_DETAIL_EXEMPT.has(c.countryId))];}
   }).catch(error=>{worldDataLoadPromise=null;throw error;});
   return worldDataLoadPromise;
 }
