@@ -399,4 +399,3 @@
 /* Ensure the paired research paths occupy the available panel height. */
 .category-two-tree-grid{display:block;min-width:300px;width:100%;}
 .category-two-trees{display:block;flex:1 1 auto;min-height:0;}
-.world-details-toggle{position:absolute;z-index:18;top:51px;right:10px;display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid #718096;border-radius:8px;background:#142338ed;color:#f3e7cf;font:700 11px Arial,sans-serif;box-shadow:0 3px 12px #0007;cursor:pointer;direction:rtl}.world-details-toggle span{font-size:17px;line-height:1}.world-details-toggle.is-off{border-color:#4b9b79;color:#b9e8d0;background:#102b25ed}.world-details-toggle:active{transform:translateY(1px)}
