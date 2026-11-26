@@ -19,7 +19,9 @@ let view = {x:0,y:0,w:1000,h:650};
 let selectedCountry = null, selectedRegion = null;
 let adminPaths = [], countryBorderPaths = [], wrapCopies = [], cityMarkerNodes = [], cityMarkerLayer = null, overviewViewWidth = 222, overviewBounds = null;
 let worldWrapEnabled = true;
-try { worldWrapEnabled = localStorage.getItem('wd-world-wrap') !== 'off'; } catch (_) {}
+let showFullWorld = true;
+try { worldWrapEnabled = localStorage.getItem('wd-world-wrap') !== 'off'; showFullWorld = localStorage.getItem('wd-show-full-world') !== 'off'; } catch (_) {}
+const DEVELOPMENT_VISIBLE_COUNTRIES = new Set(['TUR','IRQ','SYR','LBN','JOR','ISR','EGY','SAU','KWT','BHR','QAT','ARE','OMN','YEM','IRN']);
 let toastTimer = null;
 let viewRenderFrame = 0, lastStyledZoom = null, lastStyledCountry = null;
 let activePanel = null, diplomacyTab = 'countries', activeDiplomacyCountry = null;
@@ -279,7 +281,7 @@ function renderAdminRegions() {
     if(!feature.geometry||!feature.properties||!allowed.has(feature.properties.shapeGroup)) return;
     const path=addSvg('path',{
       d:geometryPath(feature.geometry),fill:'#76684f','fill-opacity':'.055',stroke:'#e0c795',
-      'stroke-width':'.58','stroke-opacity':'.88','stroke-linejoin':'round','stroke-linecap':'round','vector-effect':'non-scaling-stroke',class:'admin-shape'
+      'stroke-width':'.58','stroke-opacity':'.88','stroke-linejoin':'round','stroke-linecap':'round','vector-effect':'non-scaling-stroke',class:'admin-shape','data-country':feature.properties.shapeGroup
     },adminGroup);
     path.addEventListener('click',e=>{e.stopPropagation();if(selectedCountry)chooseRegion(feature)});
     adminPaths.push({feature,path});
@@ -366,6 +368,31 @@ function setWorldWrapEnabled(enabled) {
   updateWorldWrapButton();
   showToast(worldWrapEnabled?'تم تشغيل الانتقال المستمر للخريطة':'تم إيقاف الانتقال المستمر لتخفيف حمل الرسم');
 }
+function applyWorldVisibility() {
+  if(!svg) return;
+  const applyTo=(root)=>{
+    root.querySelectorAll('.country-shape').forEach(path=>{path.style.visibility=showFullWorld||DEVELOPMENT_VISIBLE_COUNTRIES.has(path.dataset.id)?'visible':'hidden';});
+    root.querySelectorAll('.admin-shape').forEach(path=>{path.style.visibility=showFullWorld||DEVELOPMENT_VISIBLE_COUNTRIES.has(path.dataset.country)?'visible':'hidden';});
+    root.querySelectorAll('path[data-id]').forEach(path=>{path.style.visibility=showFullWorld||DEVELOPMENT_VISIBLE_COUNTRIES.has(path.dataset.id)?'visible':'hidden';});
+  };
+  applyTo(svg);
+  wrapCopies.forEach(copy=>{applyTo(copy.left);applyTo(copy.right);});
+  try { localStorage.setItem('wd-show-full-world',showFullWorld?'on':'off'); } catch (_) {}
+  updateFullWorldButton();
+}
+function updateFullWorldButton() {
+  const button=$('showFullWorldToggle'); if(!button) return;
+  button.setAttribute('aria-pressed',String(showFullWorld));
+  button.innerHTML=`<span aria-hidden="true">🌍</span><b>إظهار العالم ${showFullWorld?'كامل':'محدود'}</b>`;
+  button.classList.toggle('is-off',!showFullWorld);
+}
+function installFullWorldButton() {
+  const map=$('map'); if(!map||$('showFullWorldToggle')) return;
+  const button=document.createElement('button'); button.id='showFullWorldToggle'; button.type='button'; button.className='world-wrap-toggle full-world-toggle';
+  button.addEventListener('click',()=>{showFullWorld=!showFullWorld;applyWorldVisibility();showToast(showFullWorld?'تم إظهار جميع دول العالم':'تم إخفاء الدول خارج منطقة التطوير');});
+  map.appendChild(button);updateFullWorldButton();
+}
+
 function updateWorldWrapButton() {
   const button=$('worldWrapToggle');
   if(!button) return;
@@ -379,7 +406,7 @@ function installWorldWrapButton() {
   const button=document.createElement('button');
   button.id='worldWrapToggle'; button.type='button'; button.className='world-wrap-toggle';
   button.addEventListener('click',()=>setWorldWrapEnabled(!worldWrapEnabled));
-  map.appendChild(button); updateWorldWrapButton();
+  map.appendChild(button); updateWorldWrapButton(); installFullWorldButton();
 }
 
 function renderMap() {
@@ -419,6 +446,7 @@ function renderMap() {
   const allBounds=geo.features.filter(f=>allCountries.some(c=>c.id===f.properties.iso_a3)).map(f=>boundsForGeometry(f.geometry));
   overviewBounds=unionBounds(allBounds); fit(overviewBounds,30); overviewViewWidth=view.w;
   paintCountries(); paintAdminRegions();
+  applyWorldVisibility();
   renderCityMarkers(); zoom(3.0);
   window.addEventListener('resize',updateCityMarkerSizes);
 
