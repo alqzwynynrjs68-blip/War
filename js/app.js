@@ -461,7 +461,9 @@ function renderMap() {
   window.addEventListener('resize',updateCityMarkerSizes);
 
   let pointers=new Map(),drag=null,lastDistance=0,moved=false;
-  const toSvg=e=>{const r=svg.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*view.w+view.x,y:(e.clientY-r.top)/r.height*view.h+view.y};};
+  // Convert taps through the actual SVG screen matrix so preserveAspectRatio
+  // letterboxing on mobile does not shift the destination away from the tap.
+  const toSvg=e=>{try{const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;const matrix=svg.getScreenCTM();if(matrix)return pt.matrixTransform(matrix.inverse());}catch(_){}const r=svg.getBoundingClientRect(),scale=Math.min(r.width/view.w,r.height/view.h),w=view.w*scale,h=view.h*scale,ox=(r.width-w)/2,oy=(r.height-h)/2;return{x:(e.clientX-r.left-ox)/scale+view.x,y:(e.clientY-r.top-oy)/scale+view.y};};
   svg.addEventListener('pointerdown',e=>{
     svg.setPointerCapture(e.pointerId); pointers.set(e.pointerId,{x:e.clientX,y:e.clientY}); moved=false;
     if(pointers.size===1) drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y};
@@ -882,7 +884,7 @@ function planUnitRoute(u,lonlat,target){
   const compact=route.filter((point,i)=>!i||window.WD_MOVEMENT.distance(route[i-1],point)>.02);return{ids,route:compact};
 }
 function snapToMovementNetwork(lonlat){
- if(!movementGraph||!svg)return null;const query=project(lonlat),rect=svg.getBoundingClientRect(),threshold=Math.max(view.w*10/Math.max(1,rect.width),.0008);let best=null,bestD=Infinity;const visible=f=>showFullWorld||DEVELOPMENT_VISIBLE_COUNTRIES.has(f?.properties?.shapeGroup);
+ if(!movementGraph||!svg)return null;const query=project(lonlat),rect=svg.getBoundingClientRect(),screenScale=Math.min(rect.width/view.w,rect.height/view.h),threshold=Math.max(36/Math.max(screenScale,.0001),.0008);let best=null,bestD=Infinity;const visible=f=>showFullWorld||DEVELOPMENT_VISIBLE_COUNTRIES.has(f?.properties?.shapeGroup);
  const test=(a,b,fromId,toId)=>{const A=project(a),B=project(b),dx=B[0]-A[0],dy=B[1]-A[1],t=Math.max(0,Math.min(1,((query[0]-A[0])*dx+(query[1]-A[1])*dy)/(dx*dx+dy*dy||1))),point=[A[0]+t*dx,A[1]+t*dy],d=Math.hypot(query[0]-point[0],query[1]-point[1]);if(d<bestD){bestD=d;best={point:unproject(point),anchorId:t<.5?fromId:toId};}};
  movementGraph.forEach(node=>{if(!node.connected||!visible(node.feature))return;node.neighbors.forEach((crossing,id)=>{const other=movementGraph.get(id);if(!other||!visible(other.feature)||node.id>id)return;const pts=edgePathForNodes(node,other,crossing);for(let i=1;i<pts.length;i++){if(pts.length===2)test(pts[i-1],pts[i],node.id,other.id);else if(i===1)test(pts[i-1],pts[i],node.id,node.id);else test(pts[i-1],pts[i],other.id,other.id);}});});return best&&bestD<=threshold?{...best,distance:bestD}:null;
 }
