@@ -488,7 +488,10 @@ function renderMap() {
     }
   });
   const end=e=>{pointers.delete(e.pointerId);if(pointers.size<2)lastDistance=0;if(pointers.size===1){const p=[...pointers.values()][0];drag={x:p.x,y:p.y,vx:view.x,vy:view.y};}else drag=null;};
-  svg.addEventListener('pointerup',e=>{if(movementMode&&pointers.size===1&&!moved){const pt=toSvg(e);movementTapHandled=true;window.setTimeout(()=>{movementTapHandled=false;},0);setUnitDestinationAt(selectedUnit,unproject(pt));}end(e);}); svg.addEventListener('pointercancel',end);
+  svg.addEventListener('pointerup',end); svg.addEventListener('pointercancel',end);
+  // Use the synthesized click for destination selection; pointerup can be lost or
+  // misclassified on touch devices when SVG pointer capture/panning is involved.
+  svg.addEventListener('click',e=>{if(!movementMode||!selectedUnit)return; e.preventDefault();e.stopPropagation();const pt=toSvg(e);movementTapHandled=true;setUnitDestinationAt(selectedUnit,unproject([pt.x,pt.y]));window.setTimeout(()=>{movementTapHandled=false;},0);});
   svg.addEventListener('wheel',e=>{e.preventDefault();const p=toSvg(e);zoom(e.deltaY<0?1.18:1/1.18,p.x,p.y);},{passive:false});
 
 }
@@ -884,7 +887,7 @@ function planUnitRoute(u,lonlat,target){
   const compact=route.filter((point,i)=>!i||window.WD_MOVEMENT.distance(route[i-1],point)>.02);return{ids,route:compact};
 }
 function snapToMovementNetwork(lonlat){
- if(!movementGraph||!svg)return null;const query=project(lonlat),rect=svg.getBoundingClientRect(),screenScale=Math.min(rect.width/view.w,rect.height/view.h),threshold=Math.max(36/Math.max(screenScale,.0001),.0008);let best=null,bestD=Infinity;const visible=f=>showFullWorld||DEVELOPMENT_VISIBLE_COUNTRIES.has(f?.properties?.shapeGroup);
+ if(!movementGraph||!svg)return null;const query=project(lonlat),ctm=svg.getScreenCTM(),screenScale=ctm?Math.hypot(ctm.a,ctm.b):Math.min(svg.getBoundingClientRect().width/view.w,svg.getBoundingClientRect().height/view.h),threshold=Math.max(48/Math.max(screenScale,.0001),.0008);let best=null,bestD=Infinity;const visible=f=>showFullWorld||DEVELOPMENT_VISIBLE_COUNTRIES.has(f?.properties?.shapeGroup);
  const test=(a,b,fromId,toId)=>{const A=project(a),B=project(b),dx=B[0]-A[0],dy=B[1]-A[1],t=Math.max(0,Math.min(1,((query[0]-A[0])*dx+(query[1]-A[1])*dy)/(dx*dx+dy*dy||1))),point=[A[0]+t*dx,A[1]+t*dy],d=Math.hypot(query[0]-point[0],query[1]-point[1]);if(d<bestD){bestD=d;best={point:unproject(point),anchorId:t<.5?fromId:toId};}};
  movementGraph.forEach(node=>{if(!node.connected||!visible(node.feature))return;node.neighbors.forEach((crossing,id)=>{const other=movementGraph.get(id);if(!other||!visible(other.feature)||node.id>id)return;const pts=edgePathForNodes(node,other,crossing);for(let i=1;i<pts.length;i++){if(pts.length===2)test(pts[i-1],pts[i],node.id,other.id);else if(i===1)test(pts[i-1],pts[i],node.id,node.id);else test(pts[i-1],pts[i],other.id,other.id);}});});return best&&bestD<=threshold?{...best,distance:bestD}:null;
 }
