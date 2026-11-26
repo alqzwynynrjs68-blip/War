@@ -413,3 +413,10 @@
 .map-soldier .soldier-count img{width:13px;height:13px;object-fit:contain;filter:invert(1);}
 .map-soldier .soldier-count b{font-size:11px;color:#fff;line-height:1;}
 .map-soldier .unit-actions{top:auto!important;bottom:-33px!important;left:50%!important;transform:translateX(-50%);}
+
+/* Soldier movement: confirm crossing an international border */
+.movement-confirm-copy{margin:16px 2px;color:#d7e0eb;font-size:13px;line-height:1.9;text-align:center}
+.movement-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
+.movement-confirm-actions button{min-height:40px;border:1px solid #64758a;border-radius:8px;background:#1b2d43;color:#eef3f8;font:700 12px Cairo,Arial,sans-serif}
+.movement-confirm-actions #movementConfirmYes{border-color:#b99a62;background:linear-gradient(110deg,#b18e53,#e4cb96);color:#101a27}
+.movement-confirm-actions button:active{filter:brightness(1.12)}
