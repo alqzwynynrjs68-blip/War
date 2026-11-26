@@ -399,3 +399,5 @@
 /* Ensure the paired research paths occupy the available panel height. */
 .category-two-tree-grid{display:block;min-width:300px;width:100%;}
 .category-two-trees{display:block;flex:1 1 auto;min-height:0;}
+/* Development-only world visibility switch, stacked beneath wrap control */
+.full-world-toggle{top:48px;right:10px;}
