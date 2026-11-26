@@ -123,7 +123,7 @@ function scheduleViewUpdate() {
   viewRenderFrame=requestAnimationFrame(()=>{viewRenderFrame=0;updateView();});
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2,defer=false) {
-  const minW=overviewViewWidth/75.0,maxW=overviewViewWidth/5.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
+  const minW=overviewViewWidth/90.0,maxW=overviewViewWidth/5.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
   view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; constrainCamera();
   if(defer) scheduleViewUpdate(); else updateView();
@@ -521,6 +521,7 @@ async function enterGame(countryId) {
   updateCountryPopover();
   if(!svg) renderMap();
   else if(overviewBounds) { fit(overviewBounds,30); zoom(3.0); }
+  focusSelectedCountryCapital();
   installWorldWrapButton();
   paintCountries(); paintAdminRegions();
   requestAnimationFrame(()=>{if(svg)updateView();});
@@ -830,15 +831,28 @@ function cityCardMarkup(city,index) {
     </div>
   </article>`;
 }
+function focusMapPoint(lon,lat,targetZoom) {
+  if(!svg||!Number.isFinite(lon)||!Number.isFinite(lat)) return false;
+  const [x,y]=project([lon,lat]);
+  const targetW=overviewViewWidth/targetZoom;
+  const targetH=targetW*view.h/view.w;
+  view={x:x-targetW/2,y:y-targetH/2,w:targetW,h:targetH};
+  constrainCamera();
+  updateView();
+  return true;
+}
+function focusSelectedCountryCapital() {
+  if(!selectedCountry||!svg) return;
+  let capital=(window.WD_CAPITALS||[]).find(item=>item.country===selectedCountry.id);
+  if(!capital && selectedCountry.id==='IRQ') capital={name:'بغداد',lon:44.3661,lat:33.3152};
+  if(!capital) capital=CITY_MARKERS.find(item=>item.countryId===selectedCountry.id&&item.isCapital);
+  if(capital) focusMapPoint(capital.lon,capital.lat,82);
+  else showToast('لم تُعثر بيانات عاصمة هذه الدولة');
+}
 function focusCity(cityName) {
   const city=CITY_MARKERS.find(item=>item.name===cityName && (item.countryId===selectedCountry?.id || item.country===selectedCountry?.ar));
   if(!city||!svg)return;
-  const [x,y]=project([city.lon,city.lat]);
-  const targetZoom= Math.max(overviewViewWidth/Math.min(view.w,overviewViewWidth/12),12);
-  const targetW=overviewViewWidth/Math.min(18,Math.max(12,targetZoom));
-  view={x:x-targetW/2,y:y-(targetW*view.h/view.w)/2,w:targetW,h:targetW*view.h/view.w};
-  if(typeof constrainCamera==='function')constrainCamera();
-  updateView();
+  focusMapPoint(city.lon,city.lat,80);
   showToast('تم الانتقال إلى '+city.name);
 }
 function showCityPanel(city) {
