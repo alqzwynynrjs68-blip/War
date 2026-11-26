@@ -41,8 +41,31 @@ let gameStartedAt = null, gameClockTimer = null, gameMinute = 0;
 let infantryResearch = {status:'available', completesAt:null};
 
 function project([lon,lat]) { return [(lon+180)/360*1000,(90-lat)/180*650]; }
+// Draw every geographic ring with gentle, topology-neutral corner smoothing.
+// This changes only the SVG rendering: source coordinates and hit-testing
+// geometries remain untouched. The same deterministic curve is used for
+// country outlines, country fills, and administrative boundaries.
 function ringsToPath(coords) {
-  return coords.map(r=>r.map((pt,i)=>{const [x,y]=project(pt);return (i?'L':'M')+x.toFixed(2)+','+y.toFixed(2)}).join(' ')+' Z').join(' ');
+  const CUT = 0.30; // stronger flowing corners without flattening the overall coastline
+  return coords.map(r=>{
+    if(!Array.isArray(r) || r.length < 4) return '';
+    let pts=r;
+    // GeoJSON rings repeat the first coordinate at the end; remove that duplicate
+    // before building the closed, smoothed SVG path.
+    if(pts.length>1 && pts[0][0]===pts[pts.length-1][0] && pts[0][1]===pts[pts.length-1][1]) pts=pts.slice(0,-1);
+    if(pts.length<3) return '';
+    const p=pts.map(project), n=p.length;
+    const toward=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+    const incoming=p.map((v,i)=>toward(v,p[(i+n-1)%n],CUT));
+    const outgoing=p.map((v,i)=>toward(v,p[(i+1)%n],CUT));
+    let d='M'+incoming[0][0].toFixed(2)+','+incoming[0][1].toFixed(2);
+    for(let i=0;i<n;i++){
+      const q=outgoing[i], next=incoming[(i+1)%n];
+      d+=' Q'+p[i][0].toFixed(2)+','+p[i][1].toFixed(2)+' '+q[0].toFixed(2)+','+q[1].toFixed(2);
+      d+=' L'+next[0].toFixed(2)+','+next[1].toFixed(2);
+    }
+    return d+' Z';
+  }).filter(Boolean).join(' ');
 }
 function geometryPath(g) {
   if(!g) return '';
@@ -256,7 +279,7 @@ function renderAdminRegions() {
     if(!feature.geometry||!feature.properties||!allowed.has(feature.properties.shapeGroup)) return;
     const path=addSvg('path',{
       d:geometryPath(feature.geometry),fill:'#76684f','fill-opacity':'.055',stroke:'#e0c795',
-      'stroke-width':'.58','stroke-opacity':'.88','vector-effect':'non-scaling-stroke',class:'admin-shape'
+      'stroke-width':'.58','stroke-opacity':'.88','stroke-linejoin':'round','stroke-linecap':'round','vector-effect':'non-scaling-stroke',class:'admin-shape'
     },adminGroup);
     path.addEventListener('click',e=>{e.stopPropagation();if(selectedCountry)chooseRegion(feature)});
     adminPaths.push({feature,path});
@@ -386,7 +409,7 @@ function renderMap() {
   geo.features.forEach(feature=>{
     const id=feature.properties.iso_a3;
     if(!allCountries.some(c=>c.id===id)) return;
-    const path=addSvg('path',{d:countryOutlinePath(feature.geometry),fill:'none',stroke:'#ffffff','stroke-width':'.55','stroke-opacity':'.62','vector-effect':'non-scaling-stroke'},countryBorderGroup);
+    const path=addSvg('path',{d:countryOutlinePath(feature.geometry),fill:'none',stroke:'#ffffff','stroke-width':'.55','stroke-opacity':'.62','stroke-linejoin':'round','stroke-linecap':'round','vector-effect':'non-scaling-stroke'},countryBorderGroup);
     countryBorderPaths.push({id,path});
   });
   // Duplicate the complete world only while horizontal wrapping is enabled.
