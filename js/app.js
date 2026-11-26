@@ -17,7 +17,7 @@ let worldDataLoadPromise = null;
 let svg, baseGroup, adminGroup, urbanPlanGroup, countryBorderGroup;
 let view = {x:0,y:0,w:1000,h:650};
 let selectedCountry = null, selectedRegion = null;
-let movementUnits=[], selectedUnit=null, movementMode=false, movementTapHandled=false, unitLayer=null, routeLayer=null, networkLayer=null, unitFrame=null, lastUnitTick=0, movementGraph=null, pendingUnitMove=null;
+let movementUnits=[], selectedUnit=null, movementMode=false, movementTapHandled=false, unitLayer=null, routeLayer=null, networkLayer=null, unitPanelLayer=null, unitPanelOpen=false, unitFrame=null, lastUnitTick=0, movementGraph=null, pendingUnitMove=null;
 let adminPaths = [], countryBorderPaths = [], wrapCopies = [], cityMarkerNodes = [], cityMarkerLayer = null, overviewViewWidth = 222, overviewBounds = null;
 let worldWrapEnabled = true;
 let showFullWorld = true;
@@ -440,6 +440,7 @@ function renderMap() {
   urbanPlanGroup=addSvg('g',{'pointer-events':'none','aria-hidden':'true'},svg);
   networkLayer=addSvg('g',{'pointer-events':'none','aria-hidden':'true'},svg);
   routeLayer=addSvg('g',{'pointer-events':'none'},svg);
+  unitPanelLayer=document.createElement('section');unitPanelLayer.className='unit-control-panel';unitPanelLayer.hidden=true;unitPanelLayer.setAttribute('dir','rtl');map.appendChild(unitPanelLayer);
   renderUrbanPlans();
   countryBorderPaths=[];
   geo.features.forEach(feature=>{
@@ -460,35 +461,32 @@ function renderMap() {
   window.addEventListener('resize',updateCityMarkerSizes);
 
   let pointers=new Map(),drag=null,lastDistance=0,moved=false;
-  // Convert using the SVG's actual transform. preserveAspectRatio='meet' adds letterboxing,
-  // so independent width/height scaling misplaces taps on many phone aspect ratios.
-  const toSvg=e=>{const ctm=svg.getScreenCTM();if(!ctm)return null;const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform(ctm.inverse());return{x:q.x,y:q.y};};
+  const toSvg=e=>{const r=svg.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*view.w+view.x,y:(e.clientY-r.top)/r.height*view.h+view.y};};
   svg.addEventListener('pointerdown',e=>{
-    if(e.button!==undefined&&e.button!==0)return;
-    try{svg.setPointerCapture(e.pointerId);}catch(_){}
-    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=false;
-    if(pointers.size===1)drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y};
+    svg.setPointerCapture(e.pointerId); pointers.set(e.pointerId,{x:e.clientX,y:e.clientY}); moved=false;
+    if(pointers.size===1) drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y};
     if(pointers.size===2){const a=[...pointers.values()];lastDistance=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);drag=null;}
   });
   svg.addEventListener('pointermove',e=>{
-    if(!pointers.has(e.pointerId))return;
+    if(!pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(pointers.size===1&&drag){
       const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
-      if(Math.hypot(dx,dy)>7)moved=true;
-      if(moved){const r=svg.getBoundingClientRect();view.x=drag.vx-dx/r.width*view.w;view.y=drag.vy-dy/r.height*view.h;constrainCamera();scheduleViewUpdate();}
-    }else if(pointers.size===2){
+      if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
+      const r=svg.getBoundingClientRect();
+      view.x=drag.vx-dx/r.width*view.w; view.y=drag.vy-dy/r.height*view.h; constrainCamera(); scheduleViewUpdate();
+    } else if(pointers.size===2){
       const a=[...pointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
-      if(lastDistance>0){const mid={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2},p=toSvg({clientX:mid.x,clientY:mid.y});if(p)zoom(d/lastDistance,p.x,p.y,true);}
+      if(lastDistance>0){
+        const mid={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2},r=svg.getBoundingClientRect();
+        const focus={x:(mid.x-r.left)/r.width*view.w+view.x,y:(mid.y-r.top)/r.height*view.h+view.y};
+        zoom(d/lastDistance,focus.x,focus.y,true);
+      }
       lastDistance=d;
     }
   });
   const end=e=>{pointers.delete(e.pointerId);if(pointers.size<2)lastDistance=0;if(pointers.size===1){const p=[...pointers.values()][0];drag={x:p.x,y:p.y,vx:view.x,vy:view.y};}else drag=null;};
-  svg.addEventListener('pointerup',e=>{
-    if(movementMode&&pointers.size===1&&!moved){const p=toSvg(e);if(p){movementTapHandled=true;setUnitDestinationAt(selectedUnit,unproject([p.x,p.y]));window.setTimeout(()=>{movementTapHandled=false;},0);}}
-    end(e);
-  });
-  svg.addEventListener('pointercancel',e=>{end(e);moved=false;});
+  svg.addEventListener('pointerup',e=>{if(movementMode&&pointers.size===1&&!moved){const pt=toSvg(e);movementTapHandled=true;window.setTimeout(()=>{movementTapHandled=false;},0);setUnitDestinationAt(selectedUnit,unproject(pt));}end(e);}); svg.addEventListener('pointercancel',end);
   svg.addEventListener('wheel',e=>{e.preventDefault();const p=toSvg(e);zoom(e.deltaY<0?1.18:1/1.18,p.x,p.y);},{passive:false});
 
 }
@@ -541,7 +539,6 @@ async function enterGame(countryId) {
 }
 function returnToCountrySelection() {
   stopCampaignClock();
-  selectedUnit=null;movementMode=false;const movementDock=document.getElementById('movementCommandPanel');if(movementDock)movementDock.hidden=true;
   selectedCountry=null; selectedRegion=null;
   $('countryPopover').hidden=true; $('countryFlagButton').setAttribute('aria-expanded','false');
   $('gameScreen').hidden=true; $('welcomeScreen').hidden=true; $('countryScreen').hidden=false;
@@ -557,6 +554,7 @@ function renderPlayableCountryCards() {
 }
 
 function showBottomPanel(id) {
+  unitPanelOpen=false;if(unitPanelLayer)unitPanelLayer.hidden=true;
   activePanel=id; selectedCity=null; selectedRegion=null;
   $('selectionPanel').hidden=true; $('dialogPanel').hidden=true;
   $('bottomNav').hidden=false;
@@ -854,111 +852,48 @@ function unproject([x,y]){return [x/1000*360-180,90-y/650*180];}
 function featureForLonLat(point){return adminGeo?.features?.find(f=>pointInFeature(point,f))||null;}
 function featureId(feature){if(!feature||!adminGeo?.features)return null;const id=`p${adminGeo.features.indexOf(feature)}`;return movementGraph?.get(id)?.connected?id:null;}
 function buildMovementNetwork(){if(!adminGeo?.features||!window.WD_MOVEMENT)return;movementGraph=window.WD_MOVEMENT.build(adminGeo.features,geo?.features||[]);renderMovementNetwork();}
-function renderMovementNetwork(){if(!networkLayer||!movementGraph)return;networkLayer.innerHTML='';const drawnEdges=new Set();movementGraph.forEach(node=>{if(!node.connected)return;const a=project(node.center);addSvg('circle',{cx:a[0],cy:a[1],r:'.12',fill:'#c5e5d2','fill-opacity':'.72',class:'movement-network-node'},networkLayer);node.neighbors.forEach((edge,id)=>{const other=movementGraph.get(id);if(!other||!edge?.point)return;const key=[node.id,id].sort().join('|');if(drawnEdges.has(key))return;drawnEdges.add(key);const crossing=project(edge.point),b=project(other.center);addSvg('polyline',{points:[a,crossing,b].map(p=>p.join(',')).join(' '),fill:'none',stroke:'#b8d1dc','stroke-width':'.58','stroke-opacity':'.58','vector-effect':'non-scaling-stroke','stroke-linecap':'round','stroke-linejoin':'round',class:'movement-network-line'},networkLayer);});});updateMovementNetworkVisibility();}
+function edgePathForNodes(node,other,crossing){
+  const a=node.center,b=other.center;let safe=true;
+  for(let i=1;i<24;i++){const t=i/24,p=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];if(!pointInFeature(p,node.feature)&&!pointInFeature(p,other.feature)){safe=false;break;}}
+  return safe?[a,b]:[a,crossing,b];
+}
+function renderMovementNetwork(){if(!networkLayer||!movementGraph)return;networkLayer.innerHTML='';const visible=f=>showFullWorld||DEVELOPMENT_VISIBLE_COUNTRIES.has(f.properties?.shapeGroup);const drawnEdges=new Set();movementGraph.forEach(node=>{if(!node.connected||!visible(node.feature))return;const a=project(node.center);addSvg('circle',{cx:a[0],cy:a[1],r:'.12',fill:'#c5e5d2','fill-opacity':'.72',class:'movement-network-node'},networkLayer);node.neighbors.forEach((crossing,id)=>{const other=movementGraph.get(id);if(!other||!visible(other.feature))return;const edge=[node.id,id].sort().join('|');if(drawnEdges.has(edge))return;drawnEdges.add(edge);const pts=edgePathForNodes(node,other,crossing).map(project).map(p=>p.join(',')).join(' ');addSvg('polyline',{points:pts,fill:'none',stroke:'#b8d1dc','stroke-width':'.58','stroke-opacity':'.58','vector-effect':'non-scaling-stroke','stroke-linecap':'round','stroke-linejoin':'round',class:'movement-network-line'},networkLayer);});});updateMovementNetworkVisibility();}
 function updateMovementNetworkVisibility(){if(!networkLayer)return;const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;const visible=zoomLevel>=38;networkLayer.style.display=visible?'inline':'none';networkLayer.style.opacity=visible?'1':'0';}
-function initializeCampaignUnit(){if(!adminGeo?.features||!selectedCountry)return;movementUnits=[];selectedUnit=null;movementMode=false;buildMovementNetwork();const own=adminGeo.features.filter(f=>f.properties?.shapeGroup===selectedCountry.id&&featureId(f));if(!own.length){showToast('لا توجد مقاطعات متصلة بالشبكة في هذه الدولة حالياً');return;}let capital=(window.WD_CAPITALS||[]).find(c=>c.country===selectedCountry.id);if(!capital&&selectedCountry.id==='IRQ')capital={lon:44.3661,lat:33.3152};let feature=capital?own.find(f=>pointInFeature([capital.lon,capital.lat],f)):null;if(!feature)feature=own[0];const pos=capital&&feature===own.find(f=>pointInFeature([capital.lon,capital.lat],f))?[capital.lon,capital.lat]:window.WD_MOVEMENT.center(feature);const [x,y]=project(pos);movementUnits.push({id:'unit-'+Date.now(),countryId:selectedCountry.id,feature,x,y,route:[],moving:false,speed:DEFAULT_UNIT_SPEED_KMH});renderMovementUnits();}
-function renderMovementUnits(){if(!unitLayer)return;unitLayer.innerHTML='';movementUnits.forEach(u=>{const el=document.createElement('button');el.type='button';el.className='map-soldier';el.innerHTML=`<img class="soldier-body" src="assets/${u.moving?'military-vehicle.png':'unit-soldier.png'}" alt=""><span class="soldier-count"><img src="assets/infantry-icon.png" alt=""><b>1</b></span>`;el.setAttribute('aria-label','جندي واحد');el.style.cssText='position:absolute;pointer-events:auto;transform:translate(-50%,-50%);width:52px;height:76px;border:0;border-radius:0;background:transparent;box-shadow:none;display:block;padding:0;';el.addEventListener('click',e=>{e.stopPropagation();selectMovementUnit(u);});unitLayer.appendChild(el);u.element=el;});updateMovementVisuals();if(selectedUnit&&selectedUnit.element)renderUnitActions();renderMovementPanel();}
-function selectMovementUnit(u){selectedUnit=u;movementMode=false;closePanels();renderMovementUnits();renderUnitActions();updateMovementVisuals();renderRoute();renderMovementPanel();}
-function renderUnitActions(){if(selectedUnit?.element){const old=selectedUnit.element.querySelector('.unit-actions');if(old)old.remove();}}
-function planUnitRoute(u,target,targetPoint){
-  const currentPoint=unproject([u.x,u.y]),startFeature=featureForLonLat(currentPoint)||u.feature;
+function initializeCampaignUnit(){if(!adminGeo?.features||!selectedCountry)return;movementUnits=[];selectedUnit=null;movementMode=false;unitPanelOpen=false;if(unitPanelLayer)unitPanelLayer.hidden=true;buildMovementNetwork();const own=adminGeo.features.filter(f=>f.properties?.shapeGroup===selectedCountry.id&&featureId(f));if(!own.length){showToast('لا توجد مقاطعات متصلة بالشبكة في هذه الدولة حالياً');return;}let capital=(window.WD_CAPITALS||[]).find(c=>c.country===selectedCountry.id);if(!capital&&selectedCountry.id==='IRQ')capital={lon:44.3661,lat:33.3152};let feature=capital?own.find(f=>pointInFeature([capital.lon,capital.lat],f)):null;if(!feature)feature=own[0];const pos=capital&&feature===own.find(f=>pointInFeature([capital.lon,capital.lat],f))?[capital.lon,capital.lat]:window.WD_MOVEMENT.center(feature);const [x,y]=project(pos);movementUnits.push({id:'unit-'+Date.now(),countryId:selectedCountry.id,feature,x,y,route:[],moving:false,speed:DEFAULT_UNIT_SPEED_KMH,routeRemainingKm:0});renderMovementUnits();}
+function renderMovementUnits(){if(!unitLayer)return;unitLayer.innerHTML='';movementUnits.forEach(u=>{const el=document.createElement('button');el.type='button';el.className='map-soldier';el.innerHTML='<img class="soldier-body" src="assets/unit-soldier.png" alt=""><span class="soldier-count"><img src="assets/infantry-icon.png" alt=""><b>1</b></span>';el.setAttribute('aria-label','جندي مشاة');el.style.cssText='position:absolute;pointer-events:auto;transform:translate(-50%,-50%);width:44px;height:64px;border:0;border-radius:0;background:transparent;box-shadow:none;display:block;padding:0;';el.addEventListener('click',e=>{e.stopPropagation();selectMovementUnit(u);});unitLayer.appendChild(el);u.element=el;});updateMovementVisuals();if(selectedUnit&&selectedUnit.element&&unitPanelOpen)renderUnitActions();}
+function selectMovementUnit(u){selectedUnit=u;movementMode=false;unitPanelOpen=true;closePanels();renderMovementUnits();renderUnitActions();updateMovementVisuals();renderRoute();}
+function setUnitPanelVisible(visible){unitPanelOpen=!!visible;if(unitPanelLayer)unitPanelLayer.hidden=!unitPanelOpen;if(unitPanelOpen&&selectedUnit)renderUnitActions();}
+function formatArrivalTime(u){if(!Number.isFinite(gameMinute)||!u.speed||u.speed<=0)return'—';const etaMinutes=Math.ceil((u.moving?u.routeRemainingKm:0)/u.speed*60);const total=gameMinute+etaMinutes,day=Math.floor(total/1440)+1,h=String(Math.floor((total%1440)/60)).padStart(2,'0'),m=String(total%60).padStart(2,'0');return`يوم ${day} · ${h}:${m}`;}
+function renderUnitActions(){if(!unitPanelLayer||!selectedUnit)return;const u=selectedUnit,country=allCountries.find(c=>c.id===u.countryId),flag=country?.flag||'🌐',moving=u.moving;unitPanelLayer.hidden=!unitPanelOpen;unitPanelLayer.innerHTML=`<button class="unit-panel-close" type="button" aria-label="إغلاق القائمة">×</button><div class="unit-panel-flag">${flag}</div><div class="unit-panel-main"><div class="unit-panel-buttons"><button type="button" data-unit-action="more">المزيد</button><button type="button" data-unit-action="move">${moving?'إعادة التوجيه':'تحريك'}</button><button type="button" data-unit-action="attack">هجوم</button>${moving?'<button type="button" class="unit-stop-button" data-unit-action="stop">التوقف</button>':''}</div><div class="unit-panel-details"><strong>${moving?'المشاة':'جندي مشاة'}</strong>${moving?`<span>التوجيه إلى ${u.destinationName||'الوجهة المحددة'}</span><small>الوصول المتوقع: ${formatArrivalTime(u)}</small><small>المتبقي: ${Math.ceil(u.routeRemainingKm||0).toLocaleString('ar-IQ')} كم · السرعة ${u.speed} كم/س</small>`:`<span>${country?.ar||'الوحدة العسكرية'}</span><small>الحالة: ${moving?'متحرك':'جاهز'}</small>`}</div></div>`;
+ unitPanelLayer.querySelector('.unit-panel-close').onclick=e=>{e.stopPropagation();setUnitPanelVisible(false);};
+ unitPanelLayer.querySelector('[data-unit-action="more"]').onclick=e=>{e.stopPropagation();showToast(`السرعة ${u.speed} كم/س · ${u.moving?'الجيش في حالة حركة':'الجيش متوقف'}`);};
+ unitPanelLayer.querySelector('[data-unit-action="move"]').onclick=e=>{e.stopPropagation();movementMode=true;setUnitPanelVisible(false);showToast('اختر أي نقطة على شبكة الحركة لتحديد الوجهة');};
+ unitPanelLayer.querySelector('[data-unit-action="attack"]').onclick=e=>{e.stopPropagation();showToast('نظام الهجوم لم يُفعّل بعد');};
+ const stop=unitPanelLayer.querySelector('[data-unit-action="stop"]');if(stop)stop.onclick=e=>{e.stopPropagation();stopUnit(u);};
+}
+function planUnitRoute(u,lonlat,target){
+  const currentPoint=unproject([u.x,u.y]);
+  const startFeature=featureForLonLat(currentPoint)||u.feature;
   const startId=featureId(startFeature),goalId=featureId(target);if(!startId||!goalId)return null;
-  const ids=window.WD_MOVEMENT.route(movementGraph,startId,goalId);if(!ids)return null;
-  const route=[currentPoint];
-  ids.forEach((id,i)=>{const node=movementGraph.get(id);if(!node)return;route.push(node.center);if(i<ids.length-1){const next=movementGraph.get(ids[i+1]),edge=node.neighbors.get(next.id);if(edge?.point)route.push(edge.point);}});
-  if(targetPoint)route.push(targetPoint);
-  const compact=route.filter((point,i)=>!i||window.WD_MOVEMENT.distance(route[i-1],point)>.02);
-  return{ids,route:compact,targetPoint:targetPoint||movementGraph.get(goalId).center};
+  const ids=window.WD_MOVEMENT.route(movementGraph,startId,goalId,{blocked:feature=>!showFullWorld&&!DEVELOPMENT_VISIBLE_COUNTRIES.has(feature?.properties?.shapeGroup)});if(!ids)return null;
+  const route=[currentPoint];if(window.WD_MOVEMENT.distance(currentPoint,movementGraph.get(ids[0]).center)>.05)route.push(movementGraph.get(ids[0]).center);
+  ids.forEach((id,i)=>{if(i<ids.length-1){const node=movementGraph.get(id),next=movementGraph.get(ids[i+1]),crossing=node?.neighbors.get(next.id);edgePathForNodes(node,next,crossing).slice(1).forEach(p=>route.push(p));}});
+  if(window.WD_MOVEMENT.distance(route[route.length-1],lonlat)>.01)route.push(lonlat);
+  const compact=route.filter((point,i)=>!i||window.WD_MOVEMENT.distance(route[i-1],point)>.02);return{ids,route:compact};
 }
-// Snap a map tap to the actual centre-border-centre polyline. The selected
-// endpoint is the province at the end of the tapped half-edge, so the final
-// leg from that province to the tap stays on the same valid network segment.
 function snapToMovementNetwork(lonlat){
-  if(!movementGraph||!svg)return null;const query=project(lonlat),rect=svg.getBoundingClientRect();
-  const threshold=Math.max(view.w*11/Math.max(1,rect.width),.0008);let best=null,bestD=Infinity;
-  const test=(a,b,anchorId)=>{const A=project(a),B=project(b),dx=B[0]-A[0],dy=B[1]-A[1],t=Math.max(0,Math.min(1,((query[0]-A[0])*dx+(query[1]-A[1])*dy)/(dx*dx+dy*dy||1))),p=[A[0]+t*dx,A[1]+t*dy],d=Math.hypot(query[0]-p[0],query[1]-p[1]);if(d<bestD){bestD=d;best={point:unproject(p),anchorId};}};
-  movementGraph.forEach(node=>{if(!node.connected)return;node.neighbors.forEach((edge,id)=>{const other=movementGraph.get(id);if(!other||node.id>id||!edge?.point)return;test(node.center,edge.point,node.id);test(edge.point,other.center,id);});});
-  return best&&bestD<=threshold?{...best,distance:bestD}:null;
+ if(!movementGraph||!svg)return null;const query=project(lonlat),rect=svg.getBoundingClientRect(),threshold=Math.max(view.w*10/Math.max(1,rect.width),.0008);let best=null,bestD=Infinity;const visible=f=>showFullWorld||DEVELOPMENT_VISIBLE_COUNTRIES.has(f?.properties?.shapeGroup);
+ const test=(a,b,fromId,toId)=>{const A=project(a),B=project(b),dx=B[0]-A[0],dy=B[1]-A[1],t=Math.max(0,Math.min(1,((query[0]-A[0])*dx+(query[1]-A[1])*dy)/(dx*dx+dy*dy||1))),point=[A[0]+t*dx,A[1]+t*dy],d=Math.hypot(query[0]-point[0],query[1]-point[1]);if(d<bestD){bestD=d;best={point:unproject(point),anchorId:t<.5?fromId:toId};}};
+ movementGraph.forEach(node=>{if(!node.connected||!visible(node.feature))return;node.neighbors.forEach((crossing,id)=>{const other=movementGraph.get(id);if(!other||!visible(other.feature)||node.id>id)return;const pts=edgePathForNodes(node,other,crossing);for(let i=1;i<pts.length;i++){if(pts.length===2)test(pts[i-1],pts[i],node.id,other.id);else if(i===1)test(pts[i-1],pts[i],node.id,node.id);else test(pts[i-1],pts[i],other.id,other.id);}});});return best&&bestD<=threshold?{...best,distance:bestD}:null;
 }
-function ensureMovementPanel(){
-  let panel=document.getElementById('movementCommandPanel');if(panel)return panel;
-  panel=document.createElement('section');panel.id='movementCommandPanel';panel.className='movement-command-panel';panel.hidden=true;document.body.appendChild(panel);return panel;
-}
-function renderMovementPanel(){
-  const panel=ensureMovementPanel();if(!selectedUnit){panel.hidden=true;return;}
-  const u=selectedUnit;panel.hidden=false;panel.classList.toggle('is-targeting',movementMode);
-  if(movementMode){panel.innerHTML=`<div class="movement-panel-title">تحديد مسار الجندي</div><div class="movement-panel-hint">اضغط على أي نقطة من خطوط شبكة الحركة في خريطة العالم لاختيار الوجهة</div><div class="movement-panel-actions"><button type="button" data-move-cancel>إلغاء</button></div>`;panel.querySelector('[data-move-cancel]').onclick=()=>{movementMode=false;renderMovementPanel();};return;}
-  if(u.moving){const nextId=u.routeProvinceIds?.[Math.min(u.routeIndexProvince||1,(u.routeProvinceIds?.length||1)-1)];const next=nextId?movementGraph?.get(nextId)?.feature:null;const nextName=provinceName(next)||'المقاطعة التالية';const remaining=Math.max(0,u.routeRemainingKm||0),minutes=Math.ceil(remaining/Math.max(1,u.speed)*60);panel.innerHTML=`<div class="movement-panel-title">الانتقال إلى ${nextName}</div><div class="movement-panel-hint">الوقت المتبقي: ${Math.floor(minutes/60)} ساعة و${minutes%60} دقيقة · الوجهة النهائية: ${provinceName(u.targetFeature)||'الوجهة'}</div><div class="movement-panel-actions"><button type="button" data-unit-stop>إيقاف</button><button type="button" data-unit-more>المزيد</button></div>`;panel.querySelector('[data-unit-stop]').onclick=()=>stopUnit(u);panel.querySelector('[data-unit-more]').onclick=()=>showToast(`السرعة ${u.speed} كم/س · المتبقي ${Math.ceil(remaining)} كم`);return;}
-  panel.innerHTML=`<div class="movement-panel-title">الجندي المحدد</div><div class="movement-panel-hint">الموقع الحالي: ${provinceName(u.feature)||'غير محدد'}</div><div class="movement-panel-actions"><button type="button" data-unit-move>تحريك</button><button type="button" data-unit-stop disabled>إيقاف</button><button type="button" data-unit-more>المزيد</button></div>`;
-  panel.querySelector('[data-unit-move]').onclick=()=>{movementMode=true;renderMovementPanel();showToast('اختر أي نقطة على خطوط شبكة الحركة لتحديد الوجهة');};
-  panel.querySelector('[data-unit-more]').onclick=()=>showToast(`سرعة الوحدة ${u.speed} كم/س`);
-}
-function provinceName(feature){const p=feature?.properties||{};return p.shapeName||p.name||p.NAME_1||p.admin||p.shapeID||'مقاطعة';}
-function countriesCrossed(u,ids){
-  const seen=new Set(),crossed=[];
-  ids.forEach(id=>{const node=movementGraph.get(id),countryId=node?.feature?.properties?.shapeGroup;if(!countryId||countryId===u.countryId||seen.has(countryId))return;seen.add(countryId);const country=allCountries.find(c=>c.id===countryId);if(country)crossed.push(country);});
-  return crossed;
-}
-function setUnitDestinationAt(u,lonlat){
-  if(!u||!movementGraph)return;
-  const snapped=snapToMovementNetwork(lonlat);
-  if(!snapped){const under=featureForLonLat(lonlat);showToast(under&&!featureId(under)?'هذه المقاطعة غير مرتبطة بشبكة الحركة حالياً':'اضغط على خط من خطوط شبكة الحركة، ويمكنك المحاولة مجدداً');return;}
-  const targetNode=movementGraph.get(snapped.anchorId),target=targetNode?.feature;
-  if(!target||!featureId(target)){showToast('هذه النقطة غير متصلة بالشبكة؛ اختر نقطة أخرى');return;}
-  const plan=planUnitRoute(u,target,snapped.point);
-  if(!plan){showToast('لا يوجد مسار متصل إلى هذه النقطة؛ اختر وجهة أخرى');return;}
-  const crossed=countriesCrossed(u,plan.ids);movementMode=false;
-  if(crossed.length){pendingUnitMove={unit:u,target,plan,crossed};showBorderConfirmation(crossed);renderMovementPanel();return;}
-  commitUnitDestination(u,target,plan,[]);
-}
-function showBorderConfirmation(countries){
-  const panel=$('dialogPanel'),names=countries.map(c=>c.ar).join('، ');
-  panel.classList.add('movement-confirm-dialog');panel.style.width='min(560px, calc(100% - 24px))';panel.style.maxWidth='560px';panel.style.overflow='visible';panel.hidden=false;
-  panel.innerHTML=`<div class="dialog-head"><strong>تأكيد الإجراء</strong><button type="button" id="movementConfirmClose" aria-label="إغلاق">×</button></div><p class="movement-confirm-copy">سيؤدي هذا الإجراء إلى اندلاع حرب ضد ${names}، هل تريد الاستمرار؟</p><div class="movement-confirm-actions"><button type="button" id="movementConfirmYes">موافق</button><button type="button" id="movementConfirmNo">إلغاء</button></div>`;
-  const close=()=>{panel.hidden=true;panel.classList.remove('movement-confirm-dialog');panel.style.width='';panel.style.maxWidth='';panel.style.overflow='';pendingUnitMove=null;};
-  panel.querySelector('#movementConfirmClose').onclick=close;panel.querySelector('#movementConfirmNo').onclick=close;
-  panel.querySelector('#movementConfirmYes').onclick=()=>{const p=pendingUnitMove;close();if(p){const plan=planUnitRoute(p.unit,p.target);if(plan)commitUnitDestination(p.unit,p.target,plan,p.crossed);else showToast('تعذر إعادة حساب المسار؛ لم تبدأ الحركة');}};
-}
-function commitUnitDestination(u,target,plan,crossed){
-  (crossed||[]).forEach(country=>{relations[country.id]='حرب';});
-  u.route=plan.route.map(project);u.route[0]=[u.x,u.y];u.routeIndex=1;u.routeProvinceIds=plan.ids;u.routeIndexProvince=1;
-  u.routeDistanceKm=window.WD_MOVEMENT.routeDistance(plan.route);
-  u.routeRemainingKm=u.routeDistanceKm;
-  u.moving=u.route.length>1;if(u.element){const img=u.element.querySelector('.soldier-body');if(img)img.src='assets/military-vehicle.png';}u.feature=target;u.targetFeature=target;u.targetCountry=target.properties?.shapeGroup;u.warConfirmed=(crossed||[]).length>0;
-  movementMode=false;renderRoute();renderUnitActions();renderMovementPanel();
-  const eta=u.speed>0?u.routeDistanceKm/u.speed:0;
-  showToast(`تم تحديد الوجهة: ${provinceName(target)} · المسافة ${Math.round(u.routeDistanceKm).toLocaleString('ar-IQ')} كم · الوقت ${Math.floor(eta)} ساعة و${Math.round((eta%1)*60)} دقيقة`);startUnitTicker();
-}
-function stopUnit(u){u.moving=false;if(u.element){const img=u.element.querySelector('.soldier-body');if(img){img.src='assets/unit-soldier.png';img.style.transform='none';}}u.route=[];u.routeIndex=0;u.routeProvinceIds=[];movementMode=false;renderRoute();renderUnitActions();renderMovementPanel();}
+function countriesCrossed(u,ids){const seen=new Set(),crossed=[];ids.forEach(id=>{const node=movementGraph.get(id),countryId=node?.feature?.properties?.shapeGroup;if(!countryId||countryId===u.countryId||seen.has(countryId))return;seen.add(countryId);const country=allCountries.find(c=>c.id===countryId);if(country)crossed.push(country);});return crossed;}
+function setUnitDestinationAt(u,lonlat){if(!u||!movementGraph)return;const snapped=snapToMovementNetwork(lonlat);if(!snapped){const under=featureForLonLat(lonlat);showToast(under&&!featureId(under)?'هذه المقاطعة غير متصلة حالياً بالشبكة':'اختر نقطة قريبة من أحد خطوط شبكة الحركة');movementMode=true;return;}const targetNode=movementGraph.get(snapped.anchorId),target=targetNode?.feature,point=snapped.point;if(!target||!featureId(target)){showToast('هذه المنطقة غير متصلة بشبكة الحركة');movementMode=true;return;}const plan=planUnitRoute(u,point,target);if(!plan){showToast('لا يوجد مسار جغرافي متصل إلى هذه الوجهة');movementMode=true;return;}const crossed=countriesCrossed(u,plan.ids);if(crossed.length){pendingUnitMove={unit:u,point,target,crossed};showBorderConfirmation(crossed);movementMode=false;return;}commitUnitDestination(u,point,target,plan,[]);}
+function showBorderConfirmation(countries){const panel=$('dialogPanel'),names=countries.map(c=>c.ar).join('، ');panel.classList.add('movement-confirm-dialog');panel.style.width='min(560px, calc(100% - 24px))';panel.style.maxWidth='560px';panel.style.overflow='visible';panel.hidden=false;panel.innerHTML=`<div class="dialog-head"><strong>تأكيد الإجراء</strong><button type="button" id="movementConfirmClose" aria-label="إغلاق">×</button></div><p class="movement-confirm-copy">سيؤدي هذا الإجراء إلى اندلاع حرب ضد ${names}، هل تريد الاستمرار؟</p><div class="movement-confirm-actions"><button type="button" id="movementConfirmYes">موافق</button><button type="button" id="movementConfirmNo">إلغاء</button></div>`;const close=()=>{panel.hidden=true;panel.classList.remove('movement-confirm-dialog');panel.style.width='';panel.style.maxWidth='';panel.style.overflow='';pendingUnitMove=null;};panel.querySelector('#movementConfirmClose').onclick=close;panel.querySelector('#movementConfirmNo').onclick=close;panel.querySelector('#movementConfirmYes').onclick=()=>{const p=pendingUnitMove;close();if(p){const plan=planUnitRoute(p.unit,p.point,p.target);if(plan)commitUnitDestination(p.unit,p.point,p.target,plan,p.crossed);else showToast('تعذر إعادة حساب المسار؛ لم تبدأ الحركة');}};}
+function commitUnitDestination(u,lonlat,target,plan,crossed){(crossed||[]).forEach(country=>{relations[country.id]='حرب';});u.route=plan.route.map(project);u.route[0]=[u.x,u.y];u.routeIndex=1;u.routeDistanceKm=window.WD_MOVEMENT.routeDistance(plan.route);u.routeRemainingKm=u.routeDistanceKm;u.moving=u.route.length>1;u.feature=featureForLonLat(unproject([u.x,u.y]))||u.feature;u.targetFeature=target;u.targetCountry=target.properties?.shapeGroup;u.destinationName=target.properties?.shapeName||target.properties?.name||'الوجهة المحددة';u.warConfirmed=(crossed||[]).length>0;movementMode=false;renderRoute();if(unitPanelOpen)renderUnitActions();const eta=u.speed>0?u.routeDistanceKm/u.speed:0;showToast(`تم تحديد المسار؛ المسافة ${Math.round(u.routeDistanceKm).toLocaleString('ar-IQ')} كم، ومدة الوصول ${eta.toFixed(1)} ساعة من وقت اللعبة`);startUnitTicker();updateMovementVisuals();}
+function stopUnit(u){if(!u)return;u.moving=false;u.route=[];u.routeIndex=0;u.routeRemainingKm=0;u.feature=featureForLonLat(unproject([u.x,u.y]))||u.feature;movementMode=false;renderRoute();updateMovementVisuals();if(unitPanelOpen&&u===selectedUnit)renderUnitActions();}
 function renderRoute(){if(!routeLayer)return;routeLayer.innerHTML='';if(!selectedUnit?.moving||!selectedUnit.route?.length)return;const points=[[selectedUnit.x,selectedUnit.y],...selectedUnit.route.slice(selectedUnit.routeIndex||1)].map(p=>p.join(',')).join(' ');addSvg('polyline',{points,fill:'none',stroke:'#080b10','stroke-width':'1.35','stroke-opacity':'1','stroke-linecap':'round','stroke-linejoin':'round','vector-effect':'non-scaling-stroke',class:'unit-active-route'},routeLayer);}
-function startUnitTicker(){
-  if(unitFrame||!movementUnits.some(u=>u.moving)||gameClockTimer===null||gameStartedAt===null)return;
-  lastUnitTick=performance.now();
-  const tick=now=>{
-    const dt=Math.min(1,Math.max(0,(now-lastUnitTick)/1000));lastUnitTick=now;
-    // The campaign clock advances one game minute per five real seconds.
-    // Therefore one game hour takes 300 real seconds.
-    const gameHoursElapsed=dt/(60*GAME_MINUTE_REAL_SECONDS);
-    movementUnits.forEach(u=>{
-      if(!u.moving)return;
-      const kmBudget=u.speed*gameHoursElapsed;
-      let kmLeft=kmBudget;
-      while(kmLeft>0&&u.routeIndex<u.route.length){
-        const dest=u.route[u.routeIndex],here=unproject([u.x,u.y]),there=unproject(dest);
-        const segment=window.WD_MOVEMENT.distance(here,there);
-        if(segment<=kmLeft+.000001){u.x=dest[0];u.y=dest[1];kmLeft-=segment;u.routeIndex++;}
-        else{const t=kmLeft/segment,position=window.WD_MOVEMENT.interpolate(here,there,t),projected=project(position);u.x=projected[0];u.y=projected[1];kmLeft=0;}
-      }
-      u.routeRemainingKm=Math.max(0,(u.routeRemainingKm||0)-(kmBudget-kmLeft));u.routeIndexProvince=Math.min(Math.max(1,(u.routeProvinceIds||[]).length),Math.max(1,Math.floor((u.routeIndex+1)/2)));u.feature=movementGraph?.get(u.routeProvinceIds?.[u.routeIndexProvince-1])?.feature||u.feature;
-      if(u.routeIndex>=u.route.length){u.moving=false;u.route=[];u.routeIndex=0;u.routeRemainingKm=0;u.feature=u.targetFeature;if(u.element){const img=u.element.querySelector('.soldier-body');if(img){img.src='assets/unit-soldier.png';img.style.transform='none';}}u.routeProvinceIds=[];if(u===selectedUnit)showToast('وصل الجندي إلى وجهته');}
-    });
-    updateMovementVisuals();if(selectedUnit){renderRoute();renderUnitActions();renderMovementPanel();}
-    if(gameClockTimer!==null&&gameStartedAt!==null&&movementUnits.some(u=>u.moving))unitFrame=requestAnimationFrame(tick);
-    else unitFrame=null;
-  };
-  unitFrame=requestAnimationFrame(tick);
-}
-function updateMovementVisuals(){if(!svg||!unitLayer)return;const rect=svg.getBoundingClientRect();if(!rect.width||!rect.height)return;const scale=Math.min(rect.width/view.w,rect.height/view.h),ox=(rect.width-view.w*scale)/2,oy=(rect.height-view.h*scale)/2;movementUnits.forEach(u=>{if(!u.element)return;const cx=worldWrapEnabled?u.x+Math.round((view.x+view.w/2-u.x)/1000)*1000:u.x;u.element.style.left=(ox+(cx-view.x)*scale)+'px';u.element.style.top=(oy+(u.y-view.y)*scale)+'px';u.element.style.borderColor=u===selectedUnit?'#ffdf77':'#9aa7b5';if(u.moving&&u.route?.[u.routeIndex]){const a=unproject([u.x,u.y]),b=unproject(u.route[u.routeIndex]);const angle=Math.atan2(-(b[1]-a[1]),b[0]-a[0])*180/Math.PI;const img=u.element.querySelector('.soldier-body');if(img)img.style.transform=`rotate(${angle}deg)`;}});}
+function startUnitTicker(){if(unitFrame||!movementUnits.some(u=>u.moving)||gameClockTimer===null||gameStartedAt===null)return;lastUnitTick=performance.now();const tick=now=>{const dt=Math.min(1,Math.max(0,(now-lastUnitTick)/1000));lastUnitTick=now;const gameHoursElapsed=dt/(60*GAME_MINUTE_REAL_SECONDS);movementUnits.forEach(u=>{if(!u.moving)return;const kmBudget=u.speed*gameHoursElapsed;let kmLeft=kmBudget;while(kmLeft>0&&u.routeIndex<u.route.length){const dest=u.route[u.routeIndex],here=unproject([u.x,u.y]),there=unproject(dest),segment=window.WD_MOVEMENT.distance(here,there);if(segment<=kmLeft+.000001){u.x=dest[0];u.y=dest[1];kmLeft-=segment;u.routeIndex++;}else{const t=kmLeft/segment,position=window.WD_MOVEMENT.interpolate(here,there,t),projected=project(position);u.x=projected[0];u.y=projected[1];kmLeft=0;}u.feature=featureForLonLat(unproject([u.x,u.y]))||u.feature;}u.routeRemainingKm=Math.max(0,(u.routeRemainingKm||0)-(kmBudget-kmLeft));if(u.routeIndex>=u.route.length){u.moving=false;u.route=[];u.routeIndex=0;u.routeRemainingKm=0;u.feature=u.targetFeature||u.feature;if(u===selectedUnit)showToast('وصل الجندي إلى وجهته');}});updateMovementVisuals();if(selectedUnit){renderRoute();if(unitPanelOpen)renderUnitActions();}if(gameClockTimer!==null&&gameStartedAt!==null&&movementUnits.some(u=>u.moving))unitFrame=requestAnimationFrame(tick);else unitFrame=null;};unitFrame=requestAnimationFrame(tick);}
+function updateMovementVisuals(){if(!svg||!unitLayer)return;const rect=svg.getBoundingClientRect();if(!rect.width||!rect.height)return;const scale=Math.min(rect.width/view.w,rect.height/view.h),ox=(rect.width-view.w*scale)/2,oy=(rect.height-view.h*scale)/2;movementUnits.forEach(u=>{if(!u.element)return;const cx=worldWrapEnabled?u.x+Math.round((view.x+view.w/2-u.x)/1000)*1000:u.x;u.element.style.left=(ox+(cx-view.x)*scale)+'px';u.element.style.top=(oy+(u.y-view.y)*scale)+'px';const img=u.element.querySelector('.soldier-body');if(u.moving){u.element.style.width='86px';u.element.style.height='50px';if(img){img.src='assets/military-vehicle.png';const next=u.route?.[u.routeIndex]||[u.x,u.y],a=unproject([u.x,u.y]),b=unproject(next),angle=Math.atan2(-(b[1]-a[1]),(b[0]-a[0]))*180/Math.PI;img.style.transform=`rotate(${angle}deg)`;}}else{u.element.style.width='44px';u.element.style.height='64px';if(img){img.src='assets/unit-soldier.png';img.style.transform='none';}}u.element.style.borderColor=u===selectedUnit?'#ffdf77':'#9aa7b5';});}
 function focusMapPoint(lon,lat,targetZoom) {
   if(!svg||!Number.isFinite(lon)||!Number.isFinite(lat)) return false;
   const [x,y]=project([lon,lat]);
