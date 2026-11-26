@@ -17,6 +17,7 @@ let worldDataLoadPromise = null;
 let svg, baseGroup, adminGroup, urbanPlanGroup, countryBorderGroup;
 let view = {x:0,y:0,w:1000,h:650};
 let selectedCountry = null, selectedRegion = null;
+let movementUnits=[], selectedUnit=null, movementMode=false, unitLayer=null, routeLayer=null, unitFrame=null, lastUnitTick=0;
 let adminPaths = [], countryBorderPaths = [], wrapCopies = [], cityMarkerNodes = [], cityMarkerLayer = null, overviewViewWidth = 222, overviewBounds = null;
 let worldWrapEnabled = true;
 let showFullWorld = true;
@@ -24,7 +25,6 @@ try { worldWrapEnabled = localStorage.getItem('wd-world-wrap') !== 'off'; showFu
 const DEVELOPMENT_VISIBLE_COUNTRIES = new Set(['TUR','IRQ','SYR','LBN','JOR','ISR','EGY','SAU','KWT','BHR','QAT','ARE','OMN','YEM','IRN']);
 let toastTimer = null;
 let viewRenderFrame = 0, lastStyledZoom = null, lastStyledCountry = null;
-let movementGraph=null, movementFeatures=[], movementRouteLayer=null, movementSelectMode=false, movementStart=null, movementGoal=null, movementRoute=null;
 let activePanel = null, diplomacyTab = 'countries', activeDiplomacyCountry = null;
 let selectedCity = null, activeDialog = null, activeConversationCountry = null;
 const relations = {};
@@ -132,7 +132,7 @@ function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2,defer=false) {
 function updateView() {
   if(!svg) return;
   svg.setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`);
-  updateCityMarkerSizes();
+  updateCityMarkerSizes(); updateMovementVisuals();
   if(urbanPlanGroup) {
     const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;
     urbanPlanGroup.style.visibility=zoomLevel>=14.5?'visible':'hidden';
@@ -217,7 +217,7 @@ function paintAdminRegions() {
   });
 }
 function chooseRegion(feature) {
-  if(movementSelectMode){handleMovementProvince(feature);return;}
+  if(movementMode && selectedUnit){ setUnitDestination(selectedUnit,feature); return; }
   const country=allCountries.find(c=>c.id===feature.properties.shapeGroup);
   if(!country) return;
   selectedRegion=feature; selectedCity=null; paintAdminRegions();
@@ -285,7 +285,7 @@ function renderAdminRegions() {
       d:geometryPath(feature.geometry),fill:'#76684f','fill-opacity':'.055',stroke:'#e0c795',
       'stroke-width':'.58','stroke-opacity':'.88','stroke-linejoin':'round','stroke-linecap':'round','vector-effect':'non-scaling-stroke',class:'admin-shape','data-country':feature.properties.shapeGroup
     },adminGroup);
-    path.addEventListener('click',e=>{e.stopPropagation();if(movementSelectMode)handleMovementProvince(feature);else if(selectedCountry)chooseRegion(feature)});
+    path.addEventListener('click',e=>{e.stopPropagation();if(selectedCountry)chooseRegion(feature)});
     adminPaths.push({feature,path});
   });
 }
@@ -350,7 +350,7 @@ function createWorldWrapCopies() {
     left.setAttribute('transform','translate(-1000 0)');
     right.setAttribute('transform','translate(1000 0)');
     [left,right].forEach(copy=>{
-      copy.querySelectorAll('.admin-shape').forEach((path,i)=>path.addEventListener('click',e=>{e.stopPropagation();if(adminPaths[i]){if(movementSelectMode)handleMovementProvince(adminPaths[i].feature);else if(selectedCountry)chooseRegion(adminPaths[i].feature);}}));
+      copy.querySelectorAll('.admin-shape').forEach((path,i)=>path.addEventListener('click',e=>{e.stopPropagation();if(selectedCountry&&adminPaths[i])chooseRegion(adminPaths[i].feature);}));
       copy.querySelectorAll('.country-shape').forEach(path=>path.addEventListener('click',()=>{if(selectedCountry&&path.getAttribute('data-id')!==selectedCountry.id)showToast('لا يمكنك تغيير دولتك أثناء اللعب. استخدم زر الرجوع.');}));
     });
     svg.appendChild(left); svg.appendChild(right);
@@ -411,44 +411,6 @@ function installWorldWrapButton() {
   map.appendChild(button); updateWorldWrapButton(); installFullWorldButton();
 }
 
-function movementFeatureId(feature){const i=movementFeatures.indexOf(feature);return i>=0?'p'+i:null;}
-function movementFeatureLabel(feature){return feature.properties?.name_ar||feature.properties?.shapeName||feature.properties?.name||feature.properties?.name_en||'مقاطعة';}
-function handleMovementProvince(feature){
-  if(!movementSelectMode||!movementGraph)return;
-  if(!movementStart){movementStart=movementFeatureId(feature);showToast('تم تحديد الانطلاق: '+movementFeatureLabel(feature)+' — اختر الوجهة');refreshMovementRouteUI();return;}
-  movementGoal=movementFeatureId(feature);
-  movementRoute=window.WD_MOVEMENT.route(movementGraph,movementStart,movementGoal);
-  if(!movementRoute){movementGoal=null;showToast('لا يوجد مسار بري متصل بين المقاطعتين');refreshMovementRouteUI();return;}
-  drawMovementRoute();showToast('تم عرض المسار — يمكنك اختيار وجهة أخرى لإعادة الحساب');refreshMovementRouteUI();
-}
-function drawMovementRoute(){
-  if(!movementRouteLayer)return;movementRouteLayer.innerHTML='';
-  if(!movementRoute||!movementGraph)return;
-  const pts=movementRoute.map(id=>movementGraph.get(id)?.center).filter(Boolean).map(c=>project(c));
-  if(pts.length<2)return;
-  addSvg('polyline',{points:pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join(' '),fill:'none',stroke:'#37e6b0','stroke-width':'2.6','stroke-linecap':'round','stroke-linejoin':'round','vector-effect':'non-scaling-stroke'},movementRouteLayer);
-  pts.forEach((p,i)=>addSvg('circle',{cx:p[0],cy:p[1],r:i===0||i===pts.length-1?3.5:1.8,fill:i===0?'#57d67b':i===pts.length-1?'#ffb45b':'#37e6b0',stroke:'#10202c','stroke-width':'.7','vector-effect':'non-scaling-stroke'},movementRouteLayer));
-}
-function refreshMovementRouteUI(){
-  const b=document.getElementById('movementRouteButton');if(b)b.textContent=movementSelectMode?(movementStart?'اختر الوجهة':'اختر نقطة الانطلاق'):'🧭 تخطيط حركة';
-  const c=document.getElementById('movementRouteCancel');if(c)c.style.display=movementSelectMode?'block':'none';
-}
-function toggleMovementRouteMode(){
-  if(!adminGeo?.features){showToast('بيانات المقاطعات غير جاهزة');return;}
-  movementSelectMode=!movementSelectMode;movementStart=null;movementGoal=null;movementRoute=null;
-  movementFeatures=adminGeo.features.filter(f=>f.geometry&&f.properties&&allCountries.some(c=>c.id===f.properties.shapeGroup));movementGraph=window.WD_MOVEMENT.build(movementFeatures);
-  if(!movementRouteLayer&&svg)movementRouteLayer=addSvg('g',{'pointer-events':'none'},svg);
-  if(movementRouteLayer)movementRouteLayer.innerHTML='';
-  refreshMovementRouteUI();showToast(movementSelectMode?'اختر مقاطعة الانطلاق على الخريطة':'تم إغلاق تخطيط المسار');
-}
-function installMovementRouteUI(){
-  const map=$('map');if(!map||document.getElementById('movementRouteButton'))return;
-  const b=document.createElement('button');b.id='movementRouteButton';b.type='button';b.textContent='🧭 تخطيط حركة';
-  b.style.cssText='position:absolute;z-index:15;top:12px;left:12px;padding:10px 13px;border:1px solid #37e6b0;border-radius:12px;background:#102536;color:#eafff7;font-weight:700;box-shadow:0 4px 16px #0006;';
-  b.onclick=toggleMovementRouteMode;map.appendChild(b);
-  const c=document.createElement('button');c.id='movementRouteCancel';c.type='button';c.textContent='إلغاء المسار';c.style.cssText='position:absolute;z-index:15;top:58px;left:12px;padding:8px 12px;border:1px solid #c58c61;border-radius:10px;background:#30251d;color:#ffe4cb;font-weight:600;display:none;';
-  c.onclick=()=>{movementSelectMode=false;movementStart=null;movementGoal=null;movementRoute=null;if(movementRouteLayer)movementRouteLayer.innerHTML='';refreshMovementRouteUI();showToast('تم إلغاء تخطيط المسار');};map.appendChild(c);
-}
 function renderMap() {
   const map=$('map'); map.innerHTML='';
   svg=addSvg('svg',{viewBox:'0 0 1000 650',role:'img','aria-label':'خريطة العالم','preserveAspectRatio':'xMidYMid meet'},map);
@@ -456,6 +418,7 @@ function renderMap() {
   cityMarkerLayer.setAttribute('aria-label','علامات مواقع المدن');
   cityMarkerLayer.style.cssText='position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:5;';
   map.appendChild(cityMarkerLayer);
+  unitLayer=document.createElement('div'); unitLayer.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:12;'; map.appendChild(unitLayer);
   addSvg('rect',{x:0,y:0,width:1000,height:650,fill:'#091321'},svg);
   baseGroup=addSvg('g',{},svg);
   adminGroup=addSvg('g',{},svg);
@@ -470,8 +433,8 @@ function renderMap() {
     });
   });
   renderAdminRegions();
-  movementRouteLayer=addSvg('g',{'pointer-events':'none'},svg);
   urbanPlanGroup=addSvg('g',{'pointer-events':'none','aria-hidden':'true'},svg);
+  routeLayer=addSvg('g',{'pointer-events':'none'},svg);
   renderUrbanPlans();
   countryBorderPaths=[];
   geo.features.forEach(feature=>{
@@ -488,7 +451,7 @@ function renderMap() {
   overviewBounds=unionBounds(allBounds); fit(overviewBounds,30); overviewViewWidth=view.w;
   paintCountries(); paintAdminRegions();
   applyWorldVisibility();
-  renderCityMarkers(); installMovementRouteUI(); zoom(3.0);
+  renderCityMarkers(); zoom(3.0);
   window.addEventListener('resize',updateCityMarkerSizes);
 
   let pointers=new Map(),drag=null,lastDistance=0,moved=false;
@@ -563,6 +526,7 @@ async function enterGame(countryId) {
   if(!svg) renderMap();
   else if(overviewBounds) { fit(overviewBounds,30); zoom(3.0); }
   focusSelectedCountryCapital();
+  initializeCampaignUnit();
   installWorldWrapButton();
   paintCountries(); paintAdminRegions();
   requestAnimationFrame(()=>{if(svg)updateView();});
@@ -872,6 +836,44 @@ function cityCardMarkup(city,index) {
     </div>
   </article>`;
 }
+// --- Soldier selection and continuous movement prototype ---
+function regionCenter(feature){const b=boundsForGeometry(feature.geometry);return [b.x+b.w/2,b.y+b.h/2];}
+function initializeCampaignUnit(){
+  if(!adminGeo?.features||!selectedCountry)return;
+  movementUnits=[];selectedUnit=null;movementMode=false;
+  const own=adminGeo.features.filter(f=>f.properties?.shapeGroup===selectedCountry.id);
+  if(!own.length)return;
+  let capital=(window.WD_CAPITALS||[]).find(c=>c.country===selectedCountry.id);
+  if(!capital&&selectedCountry.id==='IRQ')capital={lon:44.3661,lat:33.3152};
+  let feature=capital?own.find(f=>pointInFeature([capital.lon,capital.lat],f)):null;
+  if(!feature)feature=own[0];
+  const [x,y]=capital&&feature===own.find(f=>pointInFeature([capital.lon,capital.lat],f))?project([capital.lon,capital.lat]):regionCenter(feature);
+  movementUnits.push({id:'unit-'+Date.now(),countryId:selectedCountry.id,feature,x,y,route:[],moving:false,speed:70});
+  renderMovementUnits();
+}
+function renderMovementUnits(){if(!unitLayer)return;unitLayer.innerHTML='';movementUnits.forEach(u=>{const el=document.createElement('button');el.type='button';el.className='map-soldier';el.textContent='🪖';el.setAttribute('aria-label','جندي');el.style.cssText='position:absolute;pointer-events:auto;transform:translate(-50%,-50%);width:34px;height:34px;border:1px solid #e5c16c;border-radius:50%;background:#18283bdd;box-shadow:0 2px 8px #0009;font-size:21px;display:grid;place-items:center;';el.addEventListener('click',e=>{e.stopPropagation();selectMovementUnit(u);});unitLayer.appendChild(el);u.element=el;});updateMovementVisuals();if(selectedUnit&&selectedUnit.element)renderUnitActions();}
+function selectMovementUnit(u){selectedUnit=u;movementMode=false;closePanels();renderMovementUnits();renderUnitActions();updateMovementVisuals();}
+function renderUnitActions(){if(!selectedUnit)return;const u=selectedUnit;const el=u.element;if(!el)return;let old=el.querySelector('.unit-actions');if(old)old.remove();const bar=document.createElement('div');bar.className='unit-actions';bar.style.cssText='position:absolute;top:35px;left:50%;transform:translateX(-50%);display:flex;gap:3px;white-space:nowrap;';
+ const make=(label,color,fn)=>{const b=document.createElement('button');b.textContent=label;b.style.cssText=`pointer-events:auto;border:1px solid #ffffff55;border-radius:6px;padding:4px 6px;background:${color};color:#fff;font-size:10px;font-weight:700;`;b.onclick=e=>{e.stopPropagation();fn();};bar.appendChild(b);};
+ make('المزيد','#34465a',()=>showToast('خيارات إضافية للجندي ستضاف لاحقاً'));
+ make('تحريك','#17633d',()=>{movementMode=true;showToast('اختر المقاطعة التي تريد التحرك إليها');});
+ make('هجوم','#842b2b',()=>showToast('نظام الهجوم سيضاف لاحقاً'));
+ if(u.moving)make('توقف','#b66a12',()=>stopUnit(u));
+ el.appendChild(bar);
+}
+function setUnitDestination(u,target){if(!u||target.properties?.shapeGroup!==u.countryId){showToast('المسار التجريبي حالياً داخل الدولة نفسها');movementMode=false;return;}
+ const features=adminGeo.features.filter(f=>f.properties?.shapeGroup===u.countryId);const nodes=features.map(f=>({f,p:regionCenter(f)}));const start=nodes.reduce((a,b)=>dist2(b.p,[u.x,u.y])<dist2(a.p,[u.x,u.y])?b:a);const goal=nodes.find(n=>n.f===target);if(!goal){showToast('تعذر تحديد المقاطعة');movementMode=false;return;}
+ // Build a lightweight centroid graph from nearest neighbours (prototype routing).
+ nodes.forEach(n=>n.links=nodes.filter(m=>m!==n).sort((a,b)=>dist2(a.p,n.p)-dist2(b.p,n.p)).slice(0,5));
+ const open=[start],came=new Map(),cost=new Map([[start,0]]);while(open.length){open.sort((a,b)=>(cost.get(a)+Math.sqrt(dist2(a.p,goal.p)))-(cost.get(b)+Math.sqrt(dist2(b.p,goal.p))));const cur=open.shift();if(cur===goal)break;for(const n of cur.links){const c=cost.get(cur)+Math.sqrt(dist2(cur.p,n.p));if(!cost.has(n)||c<cost.get(n)){cost.set(n,c);came.set(n,cur);if(!open.includes(n))open.push(n);}}}
+ let path=[];if(start===goal)path=[goal];else if(came.has(goal)){let cur=goal;while(cur){path.unshift(cur);cur=came.get(cur);}}else path=[start,goal];
+ u.route=path.map(n=>n.p);if(u.route.length)u.route[0]=[u.x,u.y];u.moving=u.route.length>1;u.targetFeature=target;movementMode=false;renderRoute();renderUnitActions();showToast('بدأ الجندي التحرك');startUnitTicker();
+}
+function dist2(a,b){const dx=a[0]-b[0],dy=a[1]-b[1];return dx*dx+dy*dy;}
+function stopUnit(u){u.moving=false;u.route=[];movementMode=false;renderRoute();renderUnitActions();showToast('تم إيقاف الجندي');}
+function renderRoute(){if(!routeLayer)return;routeLayer.innerHTML='';if(!selectedUnit?.route?.length)return;const points=selectedUnit.route.map(p=>p.join(',')).join(' ');addSvg('polyline',{points,fill:'none',stroke:'#f7d36b','stroke-width':'.7','stroke-opacity':'.95','stroke-linecap':'round','stroke-linejoin':'round','vector-effect':'non-scaling-stroke'},routeLayer);}
+function startUnitTicker(){if(unitFrame)return;lastUnitTick=performance.now();const tick=now=>{const dt=Math.min(.1,(now-lastUnitTick)/1000);lastUnitTick=now;let active=false;movementUnits.forEach(u=>{if(!u.moving||u.route.length<2)return;active=true;let a=u.route[0],b=u.route[1],dx=b[0]-u.x,dy=b[1]-u.y,d=Math.hypot(dx,dy),step=u.speed*dt;if(d<=step+1e-4){u.x=b[0];u.y=b[1];u.route.shift();if(u.route.length<2){u.moving=false;u.route=[];if(u===selectedUnit)showToast('وصل الجندي');}}else{u.x+=dx/d*step;u.y+=dy/d*step;u.route[0]=[u.x,u.y];}});updateMovementVisuals();if(selectedUnit){renderRoute();renderUnitActions();}if(active){unitFrame=requestAnimationFrame(tick);}else unitFrame=null;};unitFrame=requestAnimationFrame(tick);}
+function updateMovementVisuals(){if(!svg||!unitLayer)return;const rect=svg.getBoundingClientRect();if(!rect.width||!rect.height)return;const scale=Math.min(rect.width/view.w,rect.height/view.h),ox=(rect.width-view.w*scale)/2,oy=(rect.height-view.h*scale)/2;movementUnits.forEach(u=>{if(!u.element)return;const cx=worldWrapEnabled?u.x+Math.round((view.x+view.w/2-u.x)/1000)*1000:u.x;u.element.style.left=(ox+(cx-view.x)*scale)+'px';u.element.style.top=(oy+(u.y-view.y)*scale)+'px';u.element.style.borderColor=u===selectedUnit?'#ffdf77':'#9aa7b5';});}
 function focusMapPoint(lon,lat,targetZoom) {
   if(!svg||!Number.isFinite(lon)||!Number.isFinite(lat)) return false;
   const [x,y]=project([lon,lat]);
