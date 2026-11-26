@@ -429,3 +429,15 @@
 .map-soldier .unit-actions button{min-width:42px;box-shadow:0 2px 5px #0009;font-family:Cairo,Arial,sans-serif}
 .unit-active-route{filter:drop-shadow(0 0 1px #fff9)}
 .map-soldier .unit-more-menu{position:absolute;top:100%;left:50%;transform:translateX(-50%);z-index:20;display:flex;flex-direction:column;gap:5px;min-width:120px;padding:7px;border:1px solid #ffffff55;border-radius:7px;background:#172638;color:#fff;font:10px Cairo,Arial,sans-serif;box-shadow:0 3px 10px #000b;text-align:center}.map-soldier .unit-more-menu button{border:1px solid #ffffff55;border-radius:5px;padding:4px;background:#8b3030;color:#fff;font:700 10px Cairo,Arial,sans-serif}
+
+/* Fixed command dock: independent of map zoom and unit marker coordinates. */
+.movement-command-panel{position:fixed;z-index:10050;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);transform:translateX(-50%);width:min(520px,calc(100vw - 22px));padding:12px 14px;border:1px solid #8da0b566;border-radius:14px;background:rgba(13,27,43,.97);box-shadow:0 8px 28px #000b;color:#f4f7fb;font-family:Cairo,Arial,sans-serif;direction:rtl;}
+.movement-command-panel[hidden]{display:none!important}
+.movement-panel-title{font-size:14px;font-weight:800;color:#f1d69b;text-align:center;margin-bottom:4px}
+.movement-panel-hint{font-size:11px;line-height:1.8;color:#d6e0eb;text-align:center}
+.movement-panel-actions{display:flex;justify-content:center;gap:8px;margin-top:9px}
+.movement-panel-actions button{min-width:82px;min-height:36px;padding:5px 13px;border:1px solid #ffffff40;border-radius:8px;background:#23543f;color:#fff;font:700 12px Cairo,Arial,sans-serif}
+.movement-panel-actions button[data-unit-stop],.movement-panel-actions button[data-move-cancel]{background:#823b3b}
+.movement-panel-actions button:disabled{opacity:.4}
+.map-soldier .soldier-body{object-fit:contain;}
+.map-soldier:has(.soldier-body[src*="military-vehicle"]){width:76px!important;height:43px!important;}
