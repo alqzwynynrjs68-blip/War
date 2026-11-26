@@ -67,15 +67,21 @@ function build(features,countryFeatures){
  });
  borders.forEach(border=>{
   const left=nodesByCountry.get(border.a),right=nodesByCountry.get(border.b);if(!left?.length||!right?.length)return;
-  // Existing ADM1 shared edges are more precise; only add a bridge if absent.
-  if(left.some(a=>right.some(b=>a.neighbors.has(b.id))))return;
-  let best=null,bestDistance=Infinity;
-  for(const a of left)for(const b of right){const d=distance(a.center,b.center);if(d<bestDistance){bestDistance=d;best={a,b};}}
-  if(!best)return;
-  let crossing=border.points[0]||[(best.a.center[0]+best.b.center[0])/2,(best.a.center[1]+best.b.center[1])/2],bestCost=Infinity;
-  border.points.forEach(p=>{const cost=distance(best.a.center,p)+distance(p,best.b.center);if(cost<bestCost){bestCost=cost;crossing=p;}});
-  best.a.neighbors.set(best.b.id,crossing);best.b.neighbors.set(best.a.id,crossing);
-  best.a.boundaryPoints.push(crossing);best.b.boundaryPoints.push(crossing);
+  if(!border.points.length){let best=null,bestD=Infinity;for(const a of left)for(const b of right){const d=distance(a.center,b.center);if(d<bestD){bestD=d;best={a,b};}}if(best){const p=[(best.a.center[0]+best.b.center[0])/2,(best.a.center[1]+best.b.center[1])/2];border.points.push(p);}}
+  if(!border.points.length)return;
+  // Sample the full shared national border so every touched ADM1 region can
+  // receive its own cross-border neighbor links, not just one closest pair.
+  // Country boundary segment midpoints are independent samples (not an
+  // ordered polyline), so never interpolate between neighboring array items.
+  const samples=border.points;
+  const nearest=(list,p)=>{let best=null,bestD=Infinity;for(const n of list){const d=distance(n.center,p);if(d<bestD){bestD=d;best=n;}}return best;};
+  const linked=new Set();
+  samples.forEach(crossing=>{
+   const a=nearest(left,crossing),b=nearest(right,crossing);if(!a||!b||a===b)return;
+   const key=[a.id,b.id].sort().join('|');if(linked.has(key))return;linked.add(key);
+   a.neighbors.set(b.id,crossing);b.neighbors.set(a.id,crossing);
+   a.boundaryPoints.push(crossing);b.boundaryPoints.push(crossing);
+  });
  });
  nodes.forEach(n=>{n.connected=n.neighbors.size>0;});return nodes;
 }
