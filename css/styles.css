@@ -401,3 +401,8 @@
 .category-two-trees{display:block;flex:1 1 auto;min-height:0;}
 /* Development-only world visibility switch, stacked beneath wrap control */
 .full-world-toggle{top:48px;right:10px;}
+/* Soldier movement prototype: screen-space unit marker and compact contextual controls. */
+.map-soldier{z-index:12;cursor:pointer;touch-action:manipulation;}
+.map-soldier:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+.unit-actions{z-index:15;}
+.unit-actions button{box-shadow:0 2px 5px #0008;}
