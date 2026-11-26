@@ -430,18 +430,21 @@
 .unit-active-route{filter:drop-shadow(0 0 1px #fff9)}
 .map-soldier .unit-more-menu{position:absolute;top:100%;left:50%;transform:translateX(-50%);z-index:20;display:flex;flex-direction:column;gap:5px;min-width:120px;padding:7px;border:1px solid #ffffff55;border-radius:7px;background:#172638;color:#fff;font:10px Cairo,Arial,sans-serif;box-shadow:0 3px 10px #000b;text-align:center}.map-soldier .unit-more-menu button{border:1px solid #ffffff55;border-radius:5px;padding:4px;background:#8b3030;color:#fff;font:700 10px Cairo,Arial,sans-serif}
 
-/* Fixed command dock: independent of map zoom and unit marker coordinates. */
-.movement-command-panel{position:fixed;z-index:10050;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);transform:translateX(-50%);width:min(520px,calc(100vw - 22px));padding:12px 14px;border:1px solid #8da0b566;border-radius:14px;background:rgba(13,27,43,.97);box-shadow:0 8px 28px #000b;color:#f4f7fb;font-family:Cairo,Arial,sans-serif;direction:rtl;}
-.movement-command-panel[hidden]{display:none!important}
-.movement-panel-title{font-size:14px;font-weight:800;color:#f1d69b;text-align:center;margin-bottom:4px}
-.movement-panel-hint{font-size:11px;line-height:1.8;color:#d6e0eb;text-align:center}
-.movement-panel-actions{display:flex;justify-content:center;gap:8px;margin-top:9px}
-.movement-panel-actions button{min-width:82px;min-height:36px;padding:5px 13px;border:1px solid #ffffff40;border-radius:8px;background:#23543f;color:#fff;font:700 12px Cairo,Arial,sans-serif}
-.movement-panel-actions button[data-unit-stop],.movement-panel-actions button[data-move-cancel]{background:#823b3b}
-.movement-panel-actions button:disabled{opacity:.4}
-.map-soldier .soldier-body{object-fit:contain;}
-.map-soldier:has(.soldier-body[src*="military-vehicle"]){width:76px!important;height:43px!important;}
-
-/* During destination selection the dock must not cover map hit-testing; its controls remain usable. */
-.movement-command-panel.is-targeting{pointer-events:none}
-.movement-command-panel.is-targeting button{pointer-events:auto}
+/* Persistent, screen-space military command panel. It is independent of the
+   soldier marker and map zoom, so the player can close/reopen it while units move. */
+.unit-control-panel{position:absolute;z-index:32;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));width:min(410px,calc(100% - 24px));min-height:104px;display:flex;align-items:stretch;gap:12px;padding:12px 14px;background:linear-gradient(145deg,#172a40f5,#0c192af7);border:1px solid #9b855d;border-radius:13px;box-shadow:0 12px 30px #0009;color:#f3f5f8;pointer-events:auto;direction:rtl;}
+.unit-control-panel[hidden]{display:none!important}
+.unit-panel-flag{width:76px;min-width:76px;display:grid;place-items:center;border-left:1px solid #ffffff20;font-size:48px;line-height:1;}
+.unit-panel-main{min-width:0;flex:1;display:flex;flex-direction:column;gap:8px;padding-left:18px;}
+.unit-panel-buttons{display:flex;flex-wrap:wrap;gap:5px;}
+.unit-panel-buttons button{min-height:29px;padding:4px 10px;border:1px solid #ffffff35;border-radius:7px;background:#30465e;color:#fff;font:700 11px Cairo,Arial,sans-serif;cursor:pointer;}
+.unit-panel-buttons button[data-unit-action="move"]{background:#17633d;border-color:#4b9a70}
+.unit-panel-buttons button[data-unit-action="attack"]{background:#853b37;border-color:#bd6b61}
+.unit-panel-buttons button.unit-stop-button{background:#a52e2e;border-color:#f08080}
+.unit-panel-details{display:flex;flex-direction:column;gap:2px;line-height:1.45;}
+.unit-panel-details strong{font-size:13px;color:#f2d9a4}
+.unit-panel-details span{font-size:11px;color:#f0f3f7}
+.unit-panel-details small{font-size:10px;color:#b9c5d3}
+.unit-panel-close{position:absolute;left:7px;top:6px;width:23px;height:23px;border:1px solid #ffffff35;border-radius:6px;background:#26384b;color:#fff;font-size:17px;line-height:18px;cursor:pointer;}
+.map-soldier .soldier-body{object-fit:contain;transform-origin:center center;transition:width .18s ease,height .18s ease,filter .18s ease;}
+@media(max-width:700px){.unit-control-panel{right:8px;bottom:calc(72px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100% - 16px));min-height:91px;padding:9px 10px;gap:8px;border-radius:11px;}.unit-panel-flag{width:58px;min-width:58px;font-size:38px;}.unit-panel-main{gap:6px;padding-left:13px;}.unit-panel-buttons{gap:4px;}.unit-panel-buttons button{min-height:27px;padding:3px 8px;font-size:10px;}.unit-panel-details strong{font-size:12px}.unit-panel-details span{font-size:10px}.unit-panel-details small{font-size:9px}}
