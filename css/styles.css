@@ -441,3 +441,7 @@
 .movement-panel-actions button:disabled{opacity:.4}
 .map-soldier .soldier-body{object-fit:contain;}
 .map-soldier:has(.soldier-body[src*="military-vehicle"]){width:76px!important;height:43px!important;}
+
+/* During destination selection the dock must not cover map hit-testing; its controls remain usable. */
+.movement-command-panel.is-targeting{pointer-events:none}
+.movement-command-panel.is-targeting button{pointer-events:auto}
