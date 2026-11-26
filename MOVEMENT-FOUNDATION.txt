@@ -1,0 +1,12 @@
+WORLD DOMINION - movement system foundation
+
+Added js/movement-system.js: adjacency graph derived from existing province GeoJSON, A* routing, route blocking/cost hooks, and a real-time movement controller foundation with rerouting API. No map data, borders, existing gameplay, or unit visuals are changed.
+
+API (window.WD_MOVEMENT):
+- initialize(features): returns graph/controller
+- build(features): graph keyed by p0...
+- route(graph,startId,goalId,options): A* path or null
+- createController(graph): controller; setRoute(start,goal), reroute(currentNode,goal), advance(seconds), cancel(), setSpeed(km/h), getState(), getCurrentNode()
+- options.blocked(feature) and options.cost(fromFeature,toFeature) allow future hostile/terrain restrictions.
+
+The controller is groundwork only; army visuals and UI are intentionally not added yet.
