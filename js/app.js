@@ -24,6 +24,7 @@ try { worldWrapEnabled = localStorage.getItem('wd-world-wrap') !== 'off'; showFu
 const DEVELOPMENT_VISIBLE_COUNTRIES = new Set(['TUR','IRQ','SYR','LBN','JOR','ISR','EGY','SAU','KWT','BHR','QAT','ARE','OMN','YEM','IRN']);
 let toastTimer = null;
 let viewRenderFrame = 0, lastStyledZoom = null, lastStyledCountry = null;
+let movementGraph=null, movementFeatures=[], movementRouteLayer=null, movementSelectMode=false, movementStart=null, movementGoal=null, movementRoute=null;
 let activePanel = null, diplomacyTab = 'countries', activeDiplomacyCountry = null;
 let selectedCity = null, activeDialog = null, activeConversationCountry = null;
 const relations = {};
@@ -216,6 +217,7 @@ function paintAdminRegions() {
   });
 }
 function chooseRegion(feature) {
+  if(movementSelectMode){handleMovementProvince(feature);return;}
   const country=allCountries.find(c=>c.id===feature.properties.shapeGroup);
   if(!country) return;
   selectedRegion=feature; selectedCity=null; paintAdminRegions();
@@ -283,7 +285,7 @@ function renderAdminRegions() {
       d:geometryPath(feature.geometry),fill:'#76684f','fill-opacity':'.055',stroke:'#e0c795',
       'stroke-width':'.58','stroke-opacity':'.88','stroke-linejoin':'round','stroke-linecap':'round','vector-effect':'non-scaling-stroke',class:'admin-shape','data-country':feature.properties.shapeGroup
     },adminGroup);
-    path.addEventListener('click',e=>{e.stopPropagation();if(selectedCountry)chooseRegion(feature)});
+    path.addEventListener('click',e=>{e.stopPropagation();if(movementSelectMode)handleMovementProvince(feature);else if(selectedCountry)chooseRegion(feature)});
     adminPaths.push({feature,path});
   });
 }
@@ -348,7 +350,7 @@ function createWorldWrapCopies() {
     left.setAttribute('transform','translate(-1000 0)');
     right.setAttribute('transform','translate(1000 0)');
     [left,right].forEach(copy=>{
-      copy.querySelectorAll('.admin-shape').forEach((path,i)=>path.addEventListener('click',e=>{e.stopPropagation();if(selectedCountry&&adminPaths[i])chooseRegion(adminPaths[i].feature);}));
+      copy.querySelectorAll('.admin-shape').forEach((path,i)=>path.addEventListener('click',e=>{e.stopPropagation();if(adminPaths[i]){if(movementSelectMode)handleMovementProvince(adminPaths[i].feature);else if(selectedCountry)chooseRegion(adminPaths[i].feature);}}));
       copy.querySelectorAll('.country-shape').forEach(path=>path.addEventListener('click',()=>{if(selectedCountry&&path.getAttribute('data-id')!==selectedCountry.id)showToast('لا يمكنك تغيير دولتك أثناء اللعب. استخدم زر الرجوع.');}));
     });
     svg.appendChild(left); svg.appendChild(right);
@@ -409,6 +411,44 @@ function installWorldWrapButton() {
   map.appendChild(button); updateWorldWrapButton(); installFullWorldButton();
 }
 
+function movementFeatureId(feature){const i=movementFeatures.indexOf(feature);return i>=0?'p'+i:null;}
+function movementFeatureLabel(feature){return feature.properties?.name_ar||feature.properties?.shapeName||feature.properties?.name||feature.properties?.name_en||'مقاطعة';}
+function handleMovementProvince(feature){
+  if(!movementSelectMode||!movementGraph)return;
+  if(!movementStart){movementStart=movementFeatureId(feature);showToast('تم تحديد الانطلاق: '+movementFeatureLabel(feature)+' — اختر الوجهة');refreshMovementRouteUI();return;}
+  movementGoal=movementFeatureId(feature);
+  movementRoute=window.WD_MOVEMENT.route(movementGraph,movementStart,movementGoal);
+  if(!movementRoute){movementGoal=null;showToast('لا يوجد مسار بري متصل بين المقاطعتين');refreshMovementRouteUI();return;}
+  drawMovementRoute();showToast('تم عرض المسار — يمكنك اختيار وجهة أخرى لإعادة الحساب');refreshMovementRouteUI();
+}
+function drawMovementRoute(){
+  if(!movementRouteLayer)return;movementRouteLayer.innerHTML='';
+  if(!movementRoute||!movementGraph)return;
+  const pts=movementRoute.map(id=>movementGraph.get(id)?.center).filter(Boolean).map(c=>project(c));
+  if(pts.length<2)return;
+  addSvg('polyline',{points:pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join(' '),fill:'none',stroke:'#37e6b0','stroke-width':'2.6','stroke-linecap':'round','stroke-linejoin':'round','vector-effect':'non-scaling-stroke'},movementRouteLayer);
+  pts.forEach((p,i)=>addSvg('circle',{cx:p[0],cy:p[1],r:i===0||i===pts.length-1?3.5:1.8,fill:i===0?'#57d67b':i===pts.length-1?'#ffb45b':'#37e6b0',stroke:'#10202c','stroke-width':'.7','vector-effect':'non-scaling-stroke'},movementRouteLayer));
+}
+function refreshMovementRouteUI(){
+  const b=document.getElementById('movementRouteButton');if(b)b.textContent=movementSelectMode?(movementStart?'اختر الوجهة':'اختر نقطة الانطلاق'):'🧭 تخطيط حركة';
+  const c=document.getElementById('movementRouteCancel');if(c)c.style.display=movementSelectMode?'block':'none';
+}
+function toggleMovementRouteMode(){
+  if(!adminGeo?.features){showToast('بيانات المقاطعات غير جاهزة');return;}
+  movementSelectMode=!movementSelectMode;movementStart=null;movementGoal=null;movementRoute=null;
+  movementFeatures=adminGeo.features.filter(f=>f.geometry&&f.properties&&allCountries.some(c=>c.id===f.properties.shapeGroup));movementGraph=window.WD_MOVEMENT.build(movementFeatures);
+  if(!movementRouteLayer&&svg)movementRouteLayer=addSvg('g',{'pointer-events':'none'},svg);
+  if(movementRouteLayer)movementRouteLayer.innerHTML='';
+  refreshMovementRouteUI();showToast(movementSelectMode?'اختر مقاطعة الانطلاق على الخريطة':'تم إغلاق تخطيط المسار');
+}
+function installMovementRouteUI(){
+  const map=$('map');if(!map||document.getElementById('movementRouteButton'))return;
+  const b=document.createElement('button');b.id='movementRouteButton';b.type='button';b.textContent='🧭 تخطيط حركة';
+  b.style.cssText='position:absolute;z-index:15;top:12px;left:12px;padding:10px 13px;border:1px solid #37e6b0;border-radius:12px;background:#102536;color:#eafff7;font-weight:700;box-shadow:0 4px 16px #0006;';
+  b.onclick=toggleMovementRouteMode;map.appendChild(b);
+  const c=document.createElement('button');c.id='movementRouteCancel';c.type='button';c.textContent='إلغاء المسار';c.style.cssText='position:absolute;z-index:15;top:58px;left:12px;padding:8px 12px;border:1px solid #c58c61;border-radius:10px;background:#30251d;color:#ffe4cb;font-weight:600;display:none;';
+  c.onclick=()=>{movementSelectMode=false;movementStart=null;movementGoal=null;movementRoute=null;if(movementRouteLayer)movementRouteLayer.innerHTML='';refreshMovementRouteUI();showToast('تم إلغاء تخطيط المسار');};map.appendChild(c);
+}
 function renderMap() {
   const map=$('map'); map.innerHTML='';
   svg=addSvg('svg',{viewBox:'0 0 1000 650',role:'img','aria-label':'خريطة العالم','preserveAspectRatio':'xMidYMid meet'},map);
@@ -430,6 +470,7 @@ function renderMap() {
     });
   });
   renderAdminRegions();
+  movementRouteLayer=addSvg('g',{'pointer-events':'none'},svg);
   urbanPlanGroup=addSvg('g',{'pointer-events':'none','aria-hidden':'true'},svg);
   renderUrbanPlans();
   countryBorderPaths=[];
@@ -447,7 +488,7 @@ function renderMap() {
   overviewBounds=unionBounds(allBounds); fit(overviewBounds,30); overviewViewWidth=view.w;
   paintCountries(); paintAdminRegions();
   applyWorldVisibility();
-  renderCityMarkers(); zoom(3.0);
+  renderCityMarkers(); installMovementRouteUI(); zoom(3.0);
   window.addEventListener('resize',updateCityMarkerSizes);
 
   let pointers=new Map(),drag=null,lastDistance=0,moved=false;
