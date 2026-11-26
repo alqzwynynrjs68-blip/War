@@ -126,7 +126,7 @@ function scheduleViewUpdate() {
   viewRenderFrame=requestAnimationFrame(()=>{viewRenderFrame=0;updateView();});
 }
 function zoom(f,cx=view.x+view.w/2,cy=view.y+view.h/2,defer=false) {
-  const minW=overviewViewWidth/90.0,maxW=overviewViewWidth/5.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
+  const minW=overviewViewWidth/150.0,maxW=overviewViewWidth/5.0,nw=Math.min(maxW,Math.max(minW,view.w/f)),scale=nw/view.w,nh=view.h*scale;
   const rx=(cx-view.x)/view.w,ry=(cy-view.y)/view.h;
   view={x:cx-rx*nw,y:cy-ry*nh,w:nw,h:nh}; constrainCamera();
   if(defer) scheduleViewUpdate(); else updateView();
@@ -425,6 +425,9 @@ function renderMap() {
   unitLayer=document.createElement('div'); unitLayer.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:12;'; map.appendChild(unitLayer);
   addSvg('rect',{x:0,y:0,width:1000,height:650,fill:'#091321'},svg);
   baseGroup=addSvg('g',{},svg);
+  // Realistic global terrain texture: background only, with no political borders or labels.
+  // It is intentionally beneath the existing country/province geometry and UI layers.
+  addSvg('image',{x:0,y:0,width:1000,height:650,href:'assets/world-terrain.jpg',preserveAspectRatio:'none','pointer-events':'none','aria-hidden':'true'},baseGroup);
   adminGroup=addSvg('g',{},svg);
   countryBorderGroup=addSvg('g',{'pointer-events':'none'},svg);
   geo.features.forEach(feature=>{
