@@ -460,32 +460,35 @@ function renderMap() {
   window.addEventListener('resize',updateCityMarkerSizes);
 
   let pointers=new Map(),drag=null,lastDistance=0,moved=false;
-  const toSvg=e=>{const r=svg.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*view.w+view.x,y:(e.clientY-r.top)/r.height*view.h+view.y};};
+  // Convert using the SVG's actual transform. preserveAspectRatio='meet' adds letterboxing,
+  // so independent width/height scaling misplaces taps on many phone aspect ratios.
+  const toSvg=e=>{const ctm=svg.getScreenCTM();if(!ctm)return null;const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform(ctm.inverse());return{x:q.x,y:q.y};};
   svg.addEventListener('pointerdown',e=>{
-    svg.setPointerCapture(e.pointerId); pointers.set(e.pointerId,{x:e.clientX,y:e.clientY}); moved=false;
-    if(pointers.size===1) drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y};
+    if(e.button!==undefined&&e.button!==0)return;
+    try{svg.setPointerCapture(e.pointerId);}catch(_){}
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=false;
+    if(pointers.size===1)drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y};
     if(pointers.size===2){const a=[...pointers.values()];lastDistance=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);drag=null;}
   });
   svg.addEventListener('pointermove',e=>{
-    if(!pointers.has(e.pointerId)) return;
+    if(!pointers.has(e.pointerId))return;
     pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(pointers.size===1&&drag){
       const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
-      if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
-      const r=svg.getBoundingClientRect();
-      view.x=drag.vx-dx/r.width*view.w; view.y=drag.vy-dy/r.height*view.h; constrainCamera(); scheduleViewUpdate();
-    } else if(pointers.size===2){
+      if(Math.hypot(dx,dy)>7)moved=true;
+      if(moved){const r=svg.getBoundingClientRect();view.x=drag.vx-dx/r.width*view.w;view.y=drag.vy-dy/r.height*view.h;constrainCamera();scheduleViewUpdate();}
+    }else if(pointers.size===2){
       const a=[...pointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
-      if(lastDistance>0){
-        const mid={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2},r=svg.getBoundingClientRect();
-        const focus={x:(mid.x-r.left)/r.width*view.w+view.x,y:(mid.y-r.top)/r.height*view.h+view.y};
-        zoom(d/lastDistance,focus.x,focus.y,true);
-      }
+      if(lastDistance>0){const mid={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2},p=toSvg({clientX:mid.x,clientY:mid.y});if(p)zoom(d/lastDistance,p.x,p.y,true);}
       lastDistance=d;
     }
   });
   const end=e=>{pointers.delete(e.pointerId);if(pointers.size<2)lastDistance=0;if(pointers.size===1){const p=[...pointers.values()][0];drag={x:p.x,y:p.y,vx:view.x,vy:view.y};}else drag=null;};
-  svg.addEventListener('pointerup',e=>{if(movementMode&&pointers.size===1&&!moved){const pt=toSvg(e);movementTapHandled=true;window.setTimeout(()=>{movementTapHandled=false;},0);setUnitDestinationAt(selectedUnit,unproject(pt));}end(e);}); svg.addEventListener('pointercancel',end);
+  svg.addEventListener('pointerup',e=>{
+    if(movementMode&&pointers.size===1&&!moved){const p=toSvg(e);if(p){movementTapHandled=true;setUnitDestinationAt(selectedUnit,unproject([p.x,p.y]));window.setTimeout(()=>{movementTapHandled=false;},0);}}
+    end(e);
+  });
+  svg.addEventListener('pointercancel',e=>{end(e);moved=false;});
   svg.addEventListener('wheel',e=>{e.preventDefault();const p=toSvg(e);zoom(e.deltaY<0?1.18:1/1.18,p.x,p.y);},{passive:false});
 
 }
@@ -851,31 +854,31 @@ function unproject([x,y]){return [x/1000*360-180,90-y/650*180];}
 function featureForLonLat(point){return adminGeo?.features?.find(f=>pointInFeature(point,f))||null;}
 function featureId(feature){if(!feature||!adminGeo?.features)return null;const id=`p${adminGeo.features.indexOf(feature)}`;return movementGraph?.get(id)?.connected?id:null;}
 function buildMovementNetwork(){if(!adminGeo?.features||!window.WD_MOVEMENT)return;movementGraph=window.WD_MOVEMENT.build(adminGeo.features,geo?.features||[]);renderMovementNetwork();}
-function renderMovementNetwork(){if(!networkLayer||!movementGraph)return;networkLayer.innerHTML='';const visible=f=>true;const drawnEdges=new Set();movementGraph.forEach(node=>{if(!node.connected||!visible(node.feature))return;const a=project(node.center);addSvg('circle',{cx:a[0],cy:a[1],r:'.12',fill:'#c5e5d2','fill-opacity':'.72',class:'movement-network-node'},networkLayer);node.neighbors.forEach((mid,id)=>{const other=movementGraph.get(id);if(!other||!visible(other.feature))return;const edge=[node.id,id].sort().join('|');if(drawnEdges.has(edge))return;drawnEdges.add(edge);const b=project(other.center);addSvg('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1],fill:'none',stroke:'#b8d1dc','stroke-width':'.58','stroke-opacity':'.58','vector-effect':'non-scaling-stroke','stroke-linecap':'round',class:'movement-network-line'},networkLayer);});});updateMovementNetworkVisibility();}
+function renderMovementNetwork(){if(!networkLayer||!movementGraph)return;networkLayer.innerHTML='';const drawnEdges=new Set();movementGraph.forEach(node=>{if(!node.connected)return;const a=project(node.center);addSvg('circle',{cx:a[0],cy:a[1],r:'.12',fill:'#c5e5d2','fill-opacity':'.72',class:'movement-network-node'},networkLayer);node.neighbors.forEach((edge,id)=>{const other=movementGraph.get(id);if(!other||!edge?.point)return;const key=[node.id,id].sort().join('|');if(drawnEdges.has(key))return;drawnEdges.add(key);const crossing=project(edge.point),b=project(other.center);addSvg('polyline',{points:[a,crossing,b].map(p=>p.join(',')).join(' '),fill:'none',stroke:'#b8d1dc','stroke-width':'.58','stroke-opacity':'.58','vector-effect':'non-scaling-stroke','stroke-linecap':'round','stroke-linejoin':'round',class:'movement-network-line'},networkLayer);});});updateMovementNetworkVisibility();}
 function updateMovementNetworkVisibility(){if(!networkLayer)return;const zoomLevel=overviewViewWidth>0?overviewViewWidth/view.w:1;const visible=zoomLevel>=38;networkLayer.style.display=visible?'inline':'none';networkLayer.style.opacity=visible?'1':'0';}
 function initializeCampaignUnit(){if(!adminGeo?.features||!selectedCountry)return;movementUnits=[];selectedUnit=null;movementMode=false;buildMovementNetwork();const own=adminGeo.features.filter(f=>f.properties?.shapeGroup===selectedCountry.id&&featureId(f));if(!own.length){showToast('لا توجد مقاطعات متصلة بالشبكة في هذه الدولة حالياً');return;}let capital=(window.WD_CAPITALS||[]).find(c=>c.country===selectedCountry.id);if(!capital&&selectedCountry.id==='IRQ')capital={lon:44.3661,lat:33.3152};let feature=capital?own.find(f=>pointInFeature([capital.lon,capital.lat],f)):null;if(!feature)feature=own[0];const pos=capital&&feature===own.find(f=>pointInFeature([capital.lon,capital.lat],f))?[capital.lon,capital.lat]:window.WD_MOVEMENT.center(feature);const [x,y]=project(pos);movementUnits.push({id:'unit-'+Date.now(),countryId:selectedCountry.id,feature,x,y,route:[],moving:false,speed:DEFAULT_UNIT_SPEED_KMH});renderMovementUnits();}
 function renderMovementUnits(){if(!unitLayer)return;unitLayer.innerHTML='';movementUnits.forEach(u=>{const el=document.createElement('button');el.type='button';el.className='map-soldier';el.innerHTML=`<img class="soldier-body" src="assets/${u.moving?'military-vehicle.png':'unit-soldier.png'}" alt=""><span class="soldier-count"><img src="assets/infantry-icon.png" alt=""><b>1</b></span>`;el.setAttribute('aria-label','جندي واحد');el.style.cssText='position:absolute;pointer-events:auto;transform:translate(-50%,-50%);width:52px;height:76px;border:0;border-radius:0;background:transparent;box-shadow:none;display:block;padding:0;';el.addEventListener('click',e=>{e.stopPropagation();selectMovementUnit(u);});unitLayer.appendChild(el);u.element=el;});updateMovementVisuals();if(selectedUnit&&selectedUnit.element)renderUnitActions();renderMovementPanel();}
 function selectMovementUnit(u){selectedUnit=u;movementMode=false;closePanels();renderMovementUnits();renderUnitActions();updateMovementVisuals();renderRoute();renderMovementPanel();}
 function renderUnitActions(){if(selectedUnit?.element){const old=selectedUnit.element.querySelector('.unit-actions');if(old)old.remove();}}
-function planUnitRoute(u,target){
-  const currentPoint=unproject([u.x,u.y]);
-  const startFeature=featureForLonLat(currentPoint)||u.feature;
-  const startId=featureId(startFeature),goalId=featureId(target);
-  if(!startId||!goalId)return null;
-  // The destination may be anywhere in the world. Only the graph path itself
-  // is constrained: each successive province must be a geographic neighbor.
-  const ids=window.WD_MOVEMENT.route(movementGraph,startId,goalId);
-  if(!ids)return null;
+function planUnitRoute(u,target,targetPoint){
+  const currentPoint=unproject([u.x,u.y]),startFeature=featureForLonLat(currentPoint)||u.feature;
+  const startId=featureId(startFeature),goalId=featureId(target);if(!startId||!goalId)return null;
+  const ids=window.WD_MOVEMENT.route(movementGraph,startId,goalId);if(!ids)return null;
   const route=[currentPoint];
-  ids.forEach((id,i)=>{
-    const node=movementGraph.get(id);if(!node)return;
-    if(i===0){route.push(node.center);return;}
-    const prev=movementGraph.get(ids[i-1]),crossing=prev?.neighbors.get(id);
-    if(crossing)route.push(crossing);
-    route.push(node.center);
-  });
+  ids.forEach((id,i)=>{const node=movementGraph.get(id);if(!node)return;route.push(node.center);if(i<ids.length-1){const next=movementGraph.get(ids[i+1]),edge=node.neighbors.get(next.id);if(edge?.point)route.push(edge.point);}});
+  if(targetPoint)route.push(targetPoint);
   const compact=route.filter((point,i)=>!i||window.WD_MOVEMENT.distance(route[i-1],point)>.02);
-  return {ids,route:compact,targetPoint:movementGraph.get(goalId).center};
+  return{ids,route:compact,targetPoint:targetPoint||movementGraph.get(goalId).center};
+}
+// Snap a map tap to the actual centre-border-centre polyline. The selected
+// endpoint is the province at the end of the tapped half-edge, so the final
+// leg from that province to the tap stays on the same valid network segment.
+function snapToMovementNetwork(lonlat){
+  if(!movementGraph||!svg)return null;const query=project(lonlat),rect=svg.getBoundingClientRect();
+  const threshold=Math.max(view.w*11/Math.max(1,rect.width),.0008);let best=null,bestD=Infinity;
+  const test=(a,b,anchorId)=>{const A=project(a),B=project(b),dx=B[0]-A[0],dy=B[1]-A[1],t=Math.max(0,Math.min(1,((query[0]-A[0])*dx+(query[1]-A[1])*dy)/(dx*dx+dy*dy||1))),p=[A[0]+t*dx,A[1]+t*dy],d=Math.hypot(query[0]-p[0],query[1]-p[1]);if(d<bestD){bestD=d;best={point:unproject(p),anchorId};}};
+  movementGraph.forEach(node=>{if(!node.connected)return;node.neighbors.forEach((edge,id)=>{const other=movementGraph.get(id);if(!other||node.id>id||!edge?.point)return;test(node.center,edge.point,node.id);test(edge.point,other.center,id);});});
+  return best&&bestD<=threshold?{...best,distance:bestD}:null;
 }
 function ensureMovementPanel(){
   let panel=document.getElementById('movementCommandPanel');if(panel)return panel;
@@ -883,11 +886,11 @@ function ensureMovementPanel(){
 }
 function renderMovementPanel(){
   const panel=ensureMovementPanel();if(!selectedUnit){panel.hidden=true;return;}
-  const u=selectedUnit;panel.hidden=false;
-  if(movementMode){panel.innerHTML=`<div class="movement-panel-title">تحديد مسار الجندي</div><div class="movement-panel-hint">اضغط على أي مقاطعة في خريطة العالم لاختيار الوجهة</div><div class="movement-panel-actions"><button type="button" data-move-cancel>إلغاء</button></div>`;panel.querySelector('[data-move-cancel]').onclick=()=>{movementMode=false;renderMovementPanel();};return;}
+  const u=selectedUnit;panel.hidden=false;panel.classList.toggle('is-targeting',movementMode);
+  if(movementMode){panel.innerHTML=`<div class="movement-panel-title">تحديد مسار الجندي</div><div class="movement-panel-hint">اضغط على أي نقطة من خطوط شبكة الحركة في خريطة العالم لاختيار الوجهة</div><div class="movement-panel-actions"><button type="button" data-move-cancel>إلغاء</button></div>`;panel.querySelector('[data-move-cancel]').onclick=()=>{movementMode=false;renderMovementPanel();};return;}
   if(u.moving){const nextId=u.routeProvinceIds?.[Math.min(u.routeIndexProvince||1,(u.routeProvinceIds?.length||1)-1)];const next=nextId?movementGraph?.get(nextId)?.feature:null;const nextName=provinceName(next)||'المقاطعة التالية';const remaining=Math.max(0,u.routeRemainingKm||0),minutes=Math.ceil(remaining/Math.max(1,u.speed)*60);panel.innerHTML=`<div class="movement-panel-title">الانتقال إلى ${nextName}</div><div class="movement-panel-hint">الوقت المتبقي: ${Math.floor(minutes/60)} ساعة و${minutes%60} دقيقة · الوجهة النهائية: ${provinceName(u.targetFeature)||'الوجهة'}</div><div class="movement-panel-actions"><button type="button" data-unit-stop>إيقاف</button><button type="button" data-unit-more>المزيد</button></div>`;panel.querySelector('[data-unit-stop]').onclick=()=>stopUnit(u);panel.querySelector('[data-unit-more]').onclick=()=>showToast(`السرعة ${u.speed} كم/س · المتبقي ${Math.ceil(remaining)} كم`);return;}
   panel.innerHTML=`<div class="movement-panel-title">الجندي المحدد</div><div class="movement-panel-hint">الموقع الحالي: ${provinceName(u.feature)||'غير محدد'}</div><div class="movement-panel-actions"><button type="button" data-unit-move>تحريك</button><button type="button" data-unit-stop disabled>إيقاف</button><button type="button" data-unit-more>المزيد</button></div>`;
-  panel.querySelector('[data-unit-move]').onclick=()=>{movementMode=true;renderMovementPanel();showToast('اختر أي مقاطعة في العالم لتحديد الوجهة');};
+  panel.querySelector('[data-unit-move]').onclick=()=>{movementMode=true;renderMovementPanel();showToast('اختر أي نقطة على خطوط شبكة الحركة لتحديد الوجهة');};
   panel.querySelector('[data-unit-more]').onclick=()=>showToast(`سرعة الوحدة ${u.speed} كم/س`);
 }
 function provinceName(feature){const p=feature?.properties||{};return p.shapeName||p.name||p.NAME_1||p.admin||p.shapeID||'مقاطعة';}
@@ -898,14 +901,13 @@ function countriesCrossed(u,ids){
 }
 function setUnitDestinationAt(u,lonlat){
   if(!u||!movementGraph)return;
-  const target=featureForLonLat(lonlat);
-  if(!target){showToast('اختر مقاطعة داخل حدودها على خريطة العالم');return;}
-  const targetId=featureId(target);
-  if(!targetId){showToast('هذه المقاطعة غير مرتبطة حالياً بشبكة المسارات العالمية');return;}
-  const plan=planUnitRoute(u,target);
-  if(!plan){showToast('لا يوجد مسار متصل بين موقع الجندي وهذه المقاطعة');return;}
-  const crossed=countriesCrossed(u,plan.ids);
-  movementMode=false;
+  const snapped=snapToMovementNetwork(lonlat);
+  if(!snapped){const under=featureForLonLat(lonlat);showToast(under&&!featureId(under)?'هذه المقاطعة غير مرتبطة بشبكة الحركة حالياً':'اضغط على خط من خطوط شبكة الحركة، ويمكنك المحاولة مجدداً');return;}
+  const targetNode=movementGraph.get(snapped.anchorId),target=targetNode?.feature;
+  if(!target||!featureId(target)){showToast('هذه النقطة غير متصلة بالشبكة؛ اختر نقطة أخرى');return;}
+  const plan=planUnitRoute(u,target,snapped.point);
+  if(!plan){showToast('لا يوجد مسار متصل إلى هذه النقطة؛ اختر وجهة أخرى');return;}
+  const crossed=countriesCrossed(u,plan.ids);movementMode=false;
   if(crossed.length){pendingUnitMove={unit:u,target,plan,crossed};showBorderConfirmation(crossed);renderMovementPanel();return;}
   commitUnitDestination(u,target,plan,[]);
 }
