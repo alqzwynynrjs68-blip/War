@@ -50,25 +50,18 @@ function project([lon,lat]) { return [(lon+180)/360*1000,(90-lat)/180*650]; }
 // This changes only the SVG rendering: source coordinates and hit-testing
 // geometries remain untouched. The same deterministic curve is used for
 // country outlines, country fills, and administrative boundaries.
+// Render source vertices exactly. Administrative polygons are rebuilt as a
+// shared planar partition, so smoothing each ring independently would move
+// common edges differently on either side and reintroduce visible seams.
 function ringsToPath(coords) {
-  const CUT = 0.30; // stronger flowing corners without flattening the overall coastline
   return coords.map(r=>{
     if(!Array.isArray(r) || r.length < 4) return '';
     let pts=r;
-    // GeoJSON rings repeat the first coordinate at the end; remove that duplicate
-    // before building the closed, smoothed SVG path.
     if(pts.length>1 && pts[0][0]===pts[pts.length-1][0] && pts[0][1]===pts[pts.length-1][1]) pts=pts.slice(0,-1);
     if(pts.length<3) return '';
-    const p=pts.map(project), n=p.length;
-    const toward=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
-    const incoming=p.map((v,i)=>toward(v,p[(i+n-1)%n],CUT));
-    const outgoing=p.map((v,i)=>toward(v,p[(i+1)%n],CUT));
-    let d='M'+incoming[0][0].toFixed(2)+','+incoming[0][1].toFixed(2);
-    for(let i=0;i<n;i++){
-      const q=outgoing[i], next=incoming[(i+1)%n];
-      d+=' Q'+p[i][0].toFixed(2)+','+p[i][1].toFixed(2)+' '+q[0].toFixed(2)+','+q[1].toFixed(2);
-      d+=' L'+next[0].toFixed(2)+','+next[1].toFixed(2);
-    }
+    const p=pts.map(project);
+    let d='M'+p[0][0].toFixed(6)+','+p[0][1].toFixed(6);
+    for(let i=1;i<p.length;i++) d+=' L'+p[i][0].toFixed(6)+','+p[i][1].toFixed(6);
     return d+' Z';
   }).filter(Boolean).join(' ');
 }
