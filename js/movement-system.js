@@ -40,5 +40,24 @@ function build(features){const nodes=new Map(),segments=[];(features||[]).forEac
  return nodes;}
 function edgePath(graph,aId,bId){const a=graph.get(aId),b=graph.get(bId),e=a?.neighbors.get(bId);if(!a||!b||!e)return null;const f=e.path||[a.center,e.point],g=b.neighbors.get(aId)?.path||[b.center,e.point];const path=[...f,...g.slice().reverse().slice(1)];path.crossingIndex=f.length-1;return path;}
 function route(graph,start,goal,opts={}){if(!graph.has(start)||!graph.has(goal))return null;if(opts.blocked&&(opts.blocked(graph.get(start).feature)||opts.blocked(graph.get(goal).feature)))return null;const open=[start],came=new Map(),cost=new Map([[start,0]]),closed=new Set();while(open.length){open.sort((a,b)=>(cost.get(a)+distance(graph.get(a).center,graph.get(goal).center))-(cost.get(b)+distance(graph.get(b).center,graph.get(goal).center)));const cur=open.shift();if(closed.has(cur))continue;if(cur===goal){const path=[cur];let n=cur;while(came.has(n)){n=came.get(n);path.unshift(n);}return path;}closed.add(cur);for(const [next,edge] of graph.get(cur).neighbors){const nextNode=graph.get(next);if(!nextNode||closed.has(next)||(opts.blocked&&opts.blocked(nextNode.feature)))continue;const alt=cost.get(cur)+routeDistance(edge.path||[graph.get(cur).center,edge.point])+routeDistance(nextNode.neighbors.get(cur)?.path||[nextNode.center,edge.point]);if(alt<(cost.get(next)??Infinity)){cost.set(next,alt);came.set(next,cur);if(!open.includes(next))open.push(next);}}}return null;}
-function stats(graph){let connected=0,excluded=0,edges=0,international=0;graph.forEach(n=>{n.connected?connected++:excluded++;n.neighbors.forEach((e,id)=>{if(n.id<id){edges++;if(n.feature.properties?.shapeGroup!==graph.get(id)?.feature.properties?.shapeGroup)international++;}});});return{total:graph.size,connected,excluded,edges,international};}
-window.WD_MOVEMENT={build,route,edgePath,distance,interpolate,routeDistance,center,stats,pointInFeature};})();
+// Display a strategic backbone instead of drawing every possible adjacency.
+// Keep every verified international crossing; inside each country use a
+// maximum-spanning forest so every province remains connected with the
+// strongest shared-border links and unnecessary branches are suppressed.
+function displayEdges(graph){
+ const edges=[],parent=new Map();
+ const find=x=>{if(!parent.has(x))parent.set(x,x);let p=parent.get(x);if(p!==x)parent.set(x,p=find(p));return p;};
+ const union=(a,b)=>{a=find(a);b=find(b);if(a===b)return false;parent.set(a,b);return true;};
+ graph.forEach(n=>n.neighbors.forEach((edge,id)=>{if(n.id<id){const other=graph.get(id);if(other)edges.push({a:n.id,b:id,weight:Number(edge.sharedLength)||0,countryA:n.feature.properties?.shapeGroup,countryB:other.feature.properties?.shapeGroup});}}));
+ const visible=new Set();
+ const countries=[...new Set([...graph.values()].map(n=>n.feature.properties?.shapeGroup).filter(Boolean))];
+ countries.forEach(country=>{
+  const local=edges.filter(e=>e.countryA===country&&e.countryB===country).sort((a,b)=>b.weight-a.weight);
+  local.forEach(e=>{if(union(e.a,e.b))visible.add([e.a,e.b].sort().join('|'));});
+ });
+ // International border links are strategic gateways and all are retained.
+ edges.filter(e=>e.countryA!==e.countryB).forEach(e=>visible.add([e.a,e.b].sort().join('|')));
+ return visible;
+}
+function stats(graph){let connected=0,excluded=0,edges=0,international=0;graph.forEach(n=>{n.connected?connected++:excluded++;n.neighbors.forEach((e,id)=>{if(n.id<id){edges++;if(n.feature.properties?.shapeGroup!==graph.get(id)?.feature.properties?.shapeGroup)international++;}});});return{total:graph.size,connected,excluded,edges,international,displayEdges:displayEdges(graph).size};}
+window.WD_MOVEMENT={build,route,edgePath,distance,interpolate,routeDistance,center,stats,pointInFeature,displayEdges};})();
