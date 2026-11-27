@@ -1,84 +1,44 @@
-/* WORLD DOMINION - geographic province movement network */
+/* WORLD DOMINION - topology-verified geographic movement network */
 (function(){'use strict';
 const rad=v=>v*Math.PI/180;
+const TARGET_COUNTRIES=new Set(['TUR','SYR','IRQ','KWT','IRN']);
+const BOUNDARY_TOL=0.00002; // approximately 2 m in this region
+const MIN_SHARED=0.000002; // retain very short, real shared borders
 function distance(a,b){const R=6371,dLat=rad(b[1]-a[1]),dLon=rad(b[0]-a[0]),q=Math.sin(dLat/2)**2+Math.cos(rad(a[1]))*Math.cos(rad(b[1]))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(Math.max(0,Math.min(1,q))));}
-// Great-circle interpolation keeps the soldier's travelled distance geographic
-// instead of linearly interpolating projected map pixels.
-function interpolate(a,b,t){
- t=Math.max(0,Math.min(1,t));const toVec=p=>{const la=rad(p[1]),lo=rad(p[0]),c=Math.cos(la);return[c*Math.cos(lo),c*Math.sin(lo),Math.sin(la)];};
- const A=toVec(a),B=toVec(b),dot=Math.max(-1,Math.min(1,A[0]*B[0]+A[1]*B[1]+A[2]*B[2])),omega=Math.acos(dot);
- if(omega<1e-10)return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
- const sin=Math.sin(omega),wa=Math.sin((1-t)*omega)/sin,wb=Math.sin(t*omega)/sin;
- const x=wa*A[0]+wb*B[0],y=wa*A[1]+wb*B[1],z=wa*A[2]+wb*B[2];
- return[Math.atan2(y,x)*180/Math.PI,Math.atan2(z,Math.hypot(x,y))*180/Math.PI];
-}
+function interpolate(a,b,t){t=Math.max(0,Math.min(1,t));const toVec=p=>{const la=rad(p[1]),lo=rad(p[0]),c=Math.cos(la);return[c*Math.cos(lo),c*Math.sin(lo),Math.sin(la)];};const A=toVec(a),B=toVec(b),dot=Math.max(-1,Math.min(1,A[0]*B[0]+A[1]*B[1]+A[2]*B[2])),omega=Math.acos(dot);if(omega<1e-10)return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];const sin=Math.sin(omega),wa=Math.sin((1-t)*omega)/sin,wb=Math.sin(t*omega)/sin,x=wa*A[0]+wb*B[0],y=wa*A[1]+wb*B[1],z=wa*A[2]+wb*B[2];return[Math.atan2(y,x)*180/Math.PI,Math.atan2(z,Math.hypot(x,y))*180/Math.PI];}
 function routeDistance(points){let total=0;for(let i=1;i<(points||[]).length;i++)total+=distance(points[i-1],points[i]);return total;}
-function pointInRing(point,ring){let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const a=ring[i],b=ring[j];if(((a[1]>point[1])!==(b[1]>point[1]))&&point[0]<(b[0]-a[0])*(point[1]-a[1])/(b[1]-a[1])+a[0])inside=!inside;}return inside;}
-function pointInPolygon(point,poly){return !!poly?.length&&pointInRing(point,poly[0])&&!poly.slice(1).some(r=>pointInRing(point,r));}
-function ringCentroid(ring){let area=0,cx=0,cy=0;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const cross=ring[j][0]*ring[i][1]-ring[i][0]*ring[j][1];area+=cross;cx+=(ring[j][0]+ring[i][0])*cross;cy+=(ring[j][1]+ring[i][1])*cross;}if(Math.abs(area)<1e-12)return null;return[cx/(3*area),cy/(3*area)];}
-function center(feature){
- const g=feature.geometry,polys=g?.type==='Polygon'?[g.coordinates]:g?.type==='MultiPolygon'?g.coordinates:[];
- if(!polys.length)return[0,0];
- // Use the centroid of the largest exterior polygon when it lies inside the province.
- let largest=null,largestArea=-1,best=null;
- for(const poly of polys){const ring=poly?.[0];if(!ring?.length)continue;let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;for(const p of ring){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}const area=Math.abs((maxX-minX)*(maxY-minY));if(area>largestArea){largestArea=area;largest=poly;best={minX,minY,maxX,maxY};}}
- if(!largest)return[0,0];const centroid=ringCentroid(largest[0]);if(centroid&&pointInPolygon(centroid,largest))return centroid;
- // Concave provinces can have an exterior centroid; find a valid interior point.
- const box=best;let candidate=null,bestClearance=-1;for(let gy=1;gy<20;gy++)for(let gx=1;gx<20;gx++){const p=[box.minX+(box.maxX-box.minX)*gx/20,box.minY+(box.maxY-box.minY)*gy/20];if(!pointInPolygon(p,largest))continue;let clearance=Infinity;for(const r of largest){for(let i=1;i<r.length;i++){const a=r[i-1],b=r[i],dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy||1))),d=Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy);clearance=Math.min(clearance,d);}}if(clearance>bestClearance){bestClearance=clearance;candidate=p;}}
- return candidate||centroid||[(box.minX+box.maxX)/2,(box.minY+box.maxY)/2];
-}
-function segments(feature){const out=[],g=feature.geometry;if(!g)return out;const polys=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];polys.forEach(poly=>(poly||[]).forEach(ring=>{for(let i=1;i<ring.length;i++){const a=ring[i-1],b=ring[i];const key=p=>Number(p[0]).toFixed(5)+','+Number(p[1]).toFixed(5);let ka=key(a),kb=key(b);out.push({key:ka<kb?ka+'|'+kb:kb+'|'+ka,a,b});}}));return out;}
-function build(features,countryFeatures){
- const nodes=new Map(),edges=new Map(),nodesByCountry=new Map();
- (features||[]).forEach((f,i)=>{
-  if(!f.geometry)return;const id='p'+i,country=f.properties?.shapeGroup;
-  const node={id,feature:f,center:center(f),neighbors:new Map(),boundaryPoints:[]};nodes.set(id,node);
-  if(country){if(!nodesByCountry.has(country))nodesByCountry.set(country,[]);nodesByCountry.get(country).push(node);}
-  segments(f).forEach(s=>{if(!edges.has(s.key))edges.set(s.key,[]);edges.get(s.key).push({id,...s});});
+function pointInRing(p,r){let inside=false;for(let i=0,j=r.length-1;i<r.length;j=i++){const a=r[i],b=r[j];if(((a[1]>p[1])!==(b[1]>p[1]))&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])inside=!inside;}return inside;}
+function pointInPolygon(p,poly){return !!poly?.length&&pointInRing(p,poly[0])&&!poly.slice(1).some(r=>pointInRing(p,r));}
+function pointInFeature(p,f){const g=f?.geometry;if(!g)return false;const polys=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];return polys.some(poly=>pointInPolygon(p,poly));}
+function ringCentroid(r){let area=0,cx=0,cy=0;for(let i=0,j=r.length-1;i<r.length;j=i++){const c=r[j][0]*r[i][1]-r[i][0]*r[j][1];area+=c;cx+=(r[j][0]+r[i][0])*c;cy+=(r[j][1]+r[i][1])*c;}return Math.abs(area)<1e-12?null:[cx/(3*area),cy/(3*area)];}
+function center(f){const g=f.geometry,polys=g?.type==='Polygon'?[g.coordinates]:g?.type==='MultiPolygon'?g.coordinates:[];let best=null,area=-1,box=null;for(const poly of polys){const r=poly?.[0];if(!r?.length)continue;let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;for(const p of r){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}const a=(x1-x0)*(y1-y0);if(a>area){area=a;best=poly;box={x0,y0,x1,y1};}}if(!best)return[0,0];const c=ringCentroid(best[0]);if(c&&pointInPolygon(c,best))return c;let candidate=null,clear=-1;for(let y=1;y<24;y++)for(let x=1;x<24;x++){const p=[box.x0+(box.x1-box.x0)*x/24,box.y0+(box.y1-box.y0)*y/24];if(!pointInPolygon(p,best))continue;let d=Infinity;for(const r of best)for(let i=1;i<r.length;i++){const a=r[i-1],b=r[i],dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy||1)));d=Math.min(d,Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy));}if(d>clear){clear=d;candidate=p;}}return candidate||c||[(box.x0+box.x1)/2,(box.y0+box.y1)/2];}
+function getSegments(f,id){const out=[],g=f.geometry,polys=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];polys.forEach(poly=>(poly||[]).forEach((ring,ri)=>{for(let i=1;i<ring.length;i++){const a=ring[i-1],b=ring[i];if(Math.hypot(b[0]-a[0],b[1]-a[1])<1e-10)continue;out.push({id,a,b,ri,mid:[(a[0]+b[0])/2,(a[1]+b[1])/2],minX:Math.min(a[0],b[0]),maxX:Math.max(a[0],b[0]),minY:Math.min(a[1],b[1]),maxY:Math.max(a[1],b[1])});}}));return out;}
+function overlap(a,b){const ax=a.b[0]-a.a[0],ay=a.b[1]-a.a[1],al=Math.hypot(ax,ay),bx=b.b[0]-b.a[0],by=b.b[1]-b.a[1],bl=Math.hypot(bx,by);if(!al||!bl||Math.abs(ax*by-ay*bx)/(al*bl)>0.00008)return null;const lineDist=p=>Math.abs(ax*(p[1]-a.a[1])-ay*(p[0]-a.a[0]))/al;if(Math.max(lineDist(b.a),lineDist(b.b))>BOUNDARY_TOL)return null;const ux=ax/al,uy=ay/al,t0=(b.a[0]-a.a[0])*ux+(b.a[1]-a.a[1])*uy,t1=(b.b[0]-a.a[0])*ux+(b.b[1]-a.a[1])*uy,lo=Math.max(0,Math.min(t0,t1)),hi=Math.min(al,Math.max(t0,t1));if(hi-lo<MIN_SHARED)return null;const m=(lo+hi)/2;return{point:[a.a[0]+ux*m,a.a[1]+uy*m],length:hi-lo};}
+function pointSegmentDistance(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy||1)));return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy);}
+function safeInteriorPath(f,start,end){const g=f.geometry,polys=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];let poly=null;for(const candidate of polys){if(!pointInPolygon(start,candidate))continue;let near=pointInPolygon(end,candidate);if(!near)for(const ring of candidate)for(let i=1;i<ring.length;i++)if(pointSegmentDistance(end,ring[i-1],ring[i])<=BOUNDARY_TOL*5){near=true;break;}if(near){poly=candidate;break;}}if(!poly)return null;const insidePoly=p=>{if(pointInPolygon(p,poly))return true;for(const ring of poly)for(let i=1;i<ring.length;i++)if(pointSegmentDistance(p,ring[i-1],ring[i])<=BOUNDARY_TOL*5)return true;return false;};const inside=(a,b)=>{for(let i=1;i<16;i++)if(!insidePoly([a[0]+(b[0]-a[0])*i/16,a[1]+(b[1]-a[1])*i/16]))return false;return true;};if(inside(start,end))return[start,end];let best=null;for(const ring of poly){const pts=ring.slice(0,-1),n=pts.length;if(n<3)continue;const prefix=[0];for(let i=1;i<n;i++)prefix[i]=prefix[i-1]+distance(pts[i-1],pts[i]);const circumference=prefix[n-1]+distance(pts[n-1],pts[0]),from=[],to=[];for(let i=0;i<n;i++){if(inside(start,pts[i]))from.push(i);if(inside(end,pts[i]))to.push(i);}for(const i of from)for(const j of to){const cw=(prefix[j]-prefix[i]+circumference)%circumference,ccw=circumference-cw,forward=cw<=ccw,cost=distance(start,pts[i])+Math.min(cw,ccw)+distance(pts[j],end);if(best&&cost>=best.cost)continue;const path=[start,pts[i]];let k=i,guard=0;if(forward){while(k!==j&&guard++<=n){k=(k+1)%n;path.push(pts[k]);}}else{while(k!==j&&guard++<=n){k=(k-1+n)%n;path.push(pts[k]);}}path.push(end);best={cost,path};}}return best?.path||null;}
+function build(features){const nodes=new Map(),segments=[];(features||[]).forEach((f,i)=>{if(!f.geometry||!TARGET_COUNTRIES.has(f.properties?.shapeGroup))return;const id='p'+i,country=f.properties?.shapeGroup,n={id,feature:f,center:center(f),neighbors:new Map(),connected:false,boundaryPoints:[]};nodes.set(id,n);segments.push(...getSegments(f,id));});
+ // Spatial buckets find partially overlapping shared borders even when one side has extra vertices.
+ const cell=.05,buckets=new Map();for(const s of segments){const x0=Math.floor((s.minX-BOUNDARY_TOL)/cell),x1=Math.floor((s.maxX+BOUNDARY_TOL)/cell),y0=Math.floor((s.minY-BOUNDARY_TOL)/cell),y1=Math.floor((s.maxY+BOUNDARY_TOL)/cell);for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){const k=x+','+y;if(!buckets.has(k))buckets.set(k,[]);buckets.get(k).push(s);}}
+ let segmentSerial=0;segments.forEach(s=>s.sid=segmentSerial++);const tested=new Set(),pairs=new Map();buckets.forEach(list=>{for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){const a=list[i],b=list[j];if(a.id===b.id)continue;const key=a.id<b.id?a.id+'|'+b.id:b.id+'|'+a.id;const sk=key+'#'+Math.min(a.sid,b.sid)+'#'+Math.max(a.sid,b.sid);if(tested.has(sk))continue;tested.add(sk);if(a.maxX+BOUNDARY_TOL<b.minX||b.maxX+BOUNDARY_TOL<a.minX||a.maxY+BOUNDARY_TOL<b.minY||b.maxY+BOUNDARY_TOL<a.minY)return;const ov=overlap(a,b);if(!ov)return;const p=pairs.get(key)||{a:a.id<b.id?a.id:b.id,b:a.id<b.id?b.id:a.id,length:0,bestLength:0,point:null};p.length+=ov.length;if(ov.length>p.bestLength){p.bestLength=ov.length;p.point=ov.point;}pairs.set(key,p);}});
+ // One verified adjacency per province pair; use the midpoint of the longest combined shared boundary.
+ pairs.forEach(p=>{if(p.length<MIN_SHARED)return;const a=nodes.get(p.a),b=nodes.get(p.b);if(!a||!b)return;const crossing=p.point;a.neighbors.set(b.id,{point:crossing,sharedLength:p.length});b.neighbors.set(a.id,{point:crossing,sharedLength:p.length});a.boundaryPoints.push(crossing);b.boundaryPoints.push(crossing);});
+ nodes.forEach(n=>{n.connected=n.neighbors.size>0;});
+ // Build one principal trunk per province, then branch each border connection
+ // from its nearest point on that trunk. Every leg is checked inside the polygon.
+ function closestOnLine(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy||1)));return{point:[a[0]+t*dx,a[1]+t*dy],t,d:Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy)};}
+ function prefixTo(path,q,segIndex){const out=path.slice(0,segIndex+1);if(distance(out[out.length-1],q)>.001)out.push(q);return out;}
+ nodes.forEach(n=>{
+  const ports=[...n.neighbors.entries()].map(([id,e])=>({id,edge:e,point:e.point}));if(!ports.length)return;
+  let trunk=[n.center],chosen=null;
+  if(ports.length>1){let candidates=[];for(let i=0;i<ports.length;i++)for(let j=i+1;j<ports.length;j++)candidates.push({a:ports[i],b:ports[j],d:distance(ports[i].point,ports[j].point)});candidates.sort((a,b)=>b.d-a.d);for(const pair of candidates.slice(0,1)){const first=safeInteriorPath(n.feature,n.center,pair.a.point);if(!first)continue;const second=safeInteriorPath(n.feature,pair.a.point,pair.b.point);if(!second)continue;trunk=[...first,...second.slice(1)];chosen=pair;break;}}
+  if(!chosen){for(const p of ports){const path=safeInteriorPath(n.feature,n.center,p.point);if(path)p.edge.path=path;}return;}
+  for(const p of ports){let best=null;for(let i=1;i<trunk.length;i++){const q=closestOnLine(p.point,trunk[i-1],trunk[i]);if(!best||q.d<best.d)best={...q,index:i-1};}if(!best)continue;const prefix=prefixTo(trunk,best.point,best.index),branch=safeInteriorPath(n.feature,best.point,p.point);if(!branch){const direct=safeInteriorPath(n.feature,n.center,p.point);if(direct)p.edge.path=direct;continue;}p.edge.path=[...prefix,...branch.slice(1)];}
  });
- // First connect provinces whose shared boundary segments match exactly.
- edges.forEach(items=>{if(items.length<2)return;for(let i=0;i<items.length;i++)for(let j=i+1;j<items.length;j++){
-  const a=nodes.get(items[i].id),b=nodes.get(items[j].id);if(!a||!b||a===b)continue;
-  const s=items[i],mid=[(s.a[0]+s.b[0])/2,(s.a[1]+s.b[1])/2];
-  a.neighbors.set(b.id,mid);b.neighbors.set(a.id,mid);a.boundaryPoints.push(mid);b.boundaryPoints.push(mid);
- }});
- // Country outlines can preserve a border that was digitized differently in
- // the two countries' ADM1 datasets. Use the shared national border as a
- // bridge between the closest administrative regions on each side.
- const countryEdges=new Map();
- (countryFeatures||[]).forEach(f=>{
-  const country=f.properties?.iso_a3;if(!country||!f.geometry)return;
-  segments(f).forEach(s=>{if(!countryEdges.has(s.key))countryEdges.set(s.key,[]);countryEdges.get(s.key).push({country,a:s.a,b:s.b});});
- });
- const borders=new Map();
- countryEdges.forEach(items=>{
-  const ids=[...new Set(items.map(x=>x.country))];if(ids.length<2)return;
-  for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){
-   const pair=[ids[i],ids[j]].sort(),key=pair.join('|');if(!borders.has(key))borders.set(key,{a:pair[0],b:pair[1],points:[]});
-   items.filter(x=>x.country===pair[0]||x.country===pair[1]).forEach(x=>borders.get(key).points.push([(x.a[0]+x.b[0])/2,(x.a[1]+x.b[1])/2]));
-  }
- });
- // The legacy Iraqi/Turkish and Iraqi/Syrian outlines meet at multiple
- // boundary points, but their independently sourced ADM1/country lines do not
- // share matching segments. Keep those real land links traversable as well.
- [['IRQ','TUR'],['IRQ','SYR']].forEach(pair=>{
-  const key=pair.slice().sort().join('|');
-  if(!borders.has(key))borders.set(key,{a:pair.slice().sort()[0],b:pair.slice().sort()[1],points:[]});
- });
- borders.forEach(border=>{
-  const left=nodesByCountry.get(border.a),right=nodesByCountry.get(border.b);if(!left?.length||!right?.length)return;
-  // Existing ADM1 shared edges are more precise; only add a bridge if absent.
-  if(left.some(a=>right.some(b=>a.neighbors.has(b.id))))return;
-  let best=null,bestDistance=Infinity;
-  for(const a of left)for(const b of right){const d=distance(a.center,b.center);if(d<bestDistance){bestDistance=d;best={a,b};}}
-  if(!best)return;
-  let crossing=border.points[0]||[(best.a.center[0]+best.b.center[0])/2,(best.a.center[1]+best.b.center[1])/2],bestCost=Infinity;
-  border.points.forEach(p=>{const cost=distance(best.a.center,p)+distance(p,best.b.center);if(cost<bestCost){bestCost=cost;crossing=p;}});
-  best.a.neighbors.set(best.b.id,crossing);best.b.neighbors.set(best.a.id,crossing);
-  best.a.boundaryPoints.push(crossing);best.b.boundaryPoints.push(crossing);
- });
- nodes.forEach(n=>{n.connected=n.neighbors.size>0;});return nodes;
-}
-function route(graph,start,goal,opts={}){if(!graph.has(start)||!graph.has(goal))return null;if(opts.blocked&&(opts.blocked(graph.get(start).feature)||opts.blocked(graph.get(goal).feature)))return null;const open=[start],came=new Map(),cost=new Map([[start,0]]),closed=new Set();while(open.length){open.sort((a,b)=>(cost.get(a)+distance(graph.get(a).center,graph.get(goal).center))-(cost.get(b)+distance(graph.get(b).center,graph.get(goal).center)));const cur=open.shift();if(closed.has(cur))continue;if(cur===goal){const path=[cur];let n=cur;while(came.has(n)){n=came.get(n);path.unshift(n);}return path;}closed.add(cur);for(const [next] of graph.get(cur).neighbors){const nextNode=graph.get(next);if(!nextNode||closed.has(next)||(opts.blocked&&opts.blocked(nextNode.feature)))continue;const alt=cost.get(cur)+distance(graph.get(cur).center,nextNode.center);if(alt<(cost.get(next)??Infinity)){cost.set(next,alt);came.set(next,cur);if(!open.includes(next))open.push(next);}}}return null;}
-function stats(graph){let connected=0,excluded=0;graph.forEach(n=>n.connected?connected++:excluded++);return{total:graph.size,connected,excluded};}
-window.WD_MOVEMENT={build,route,distance,interpolate,routeDistance,center,stats};})();
+ const contained=(feature,path)=>{for(let i=1;i<path.length;i++)for(let t=1;t<20;t++){const p=[path[i-1][0]+(path[i][0]-path[i-1][0])*t/20,path[i-1][1]+(path[i][1]-path[i-1][1])*t/20];if(pointInFeature(p,feature))continue;let near=false;const gg=feature.geometry,pp=gg.type==='Polygon'?[gg.coordinates]:gg.type==='MultiPolygon'?gg.coordinates:[];for(const poly of pp)for(const ring of poly)for(let j=1;j<ring.length;j++)if(pointSegmentDistance(p,ring[j-1],ring[j])<=0.00005)near=true;if(!near)return false;}return true;};
+ nodes.forEach(n=>{for(const [id,edge] of [...n.neighbors]){if(edge.path&&!contained(n.feature,edge.path)){const direct=safeInteriorPath(n.feature,n.center,edge.point);if(direct)edge.path=direct;}if(!edge.path||edge.path.length<2||!contained(n.feature,edge.path)||!nodes.get(id)?.neighbors.has(n.id))n.neighbors.delete(id);}});
+ nodes.forEach(n=>{for(const [id] of n.neighbors){if(!nodes.get(id)?.neighbors.has(n.id))n.neighbors.delete(id);}});
+ return nodes;}
+function edgePath(graph,aId,bId){const a=graph.get(aId),b=graph.get(bId),e=a?.neighbors.get(bId);if(!a||!b||!e)return null;const f=e.path||[a.center,e.point],g=b.neighbors.get(aId)?.path||[b.center,e.point];const path=[...f,...g.slice().reverse().slice(1)];path.crossingIndex=f.length-1;return path;}
+function route(graph,start,goal,opts={}){if(!graph.has(start)||!graph.has(goal))return null;if(opts.blocked&&(opts.blocked(graph.get(start).feature)||opts.blocked(graph.get(goal).feature)))return null;const open=[start],came=new Map(),cost=new Map([[start,0]]),closed=new Set();while(open.length){open.sort((a,b)=>(cost.get(a)+distance(graph.get(a).center,graph.get(goal).center))-(cost.get(b)+distance(graph.get(b).center,graph.get(goal).center)));const cur=open.shift();if(closed.has(cur))continue;if(cur===goal){const path=[cur];let n=cur;while(came.has(n)){n=came.get(n);path.unshift(n);}return path;}closed.add(cur);for(const [next,edge] of graph.get(cur).neighbors){const nextNode=graph.get(next);if(!nextNode||closed.has(next)||(opts.blocked&&opts.blocked(nextNode.feature)))continue;const alt=cost.get(cur)+routeDistance(edge.path||[graph.get(cur).center,edge.point])+routeDistance(nextNode.neighbors.get(cur)?.path||[nextNode.center,edge.point]);if(alt<(cost.get(next)??Infinity)){cost.set(next,alt);came.set(next,cur);if(!open.includes(next))open.push(next);}}}return null;}
+function stats(graph){let connected=0,excluded=0,edges=0,international=0;graph.forEach(n=>{n.connected?connected++:excluded++;n.neighbors.forEach((e,id)=>{if(n.id<id){edges++;if(n.feature.properties?.shapeGroup!==graph.get(id)?.feature.properties?.shapeGroup)international++;}});});return{total:graph.size,connected,excluded,edges,international};}
+window.WD_MOVEMENT={build,route,edgePath,distance,interpolate,routeDistance,center,stats,pointInFeature};})();
