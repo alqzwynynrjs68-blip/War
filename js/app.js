@@ -506,7 +506,9 @@ function loadWorldData() {
     loadScript('js/map-data.js'),loadScript('js/admin-data.js'),loadScript('js/capital-data.js')
   ]).then(()=>{
     geo=window.WD_COUNTRIES; adminGeo=window.WD_ADMIN_REGIONS;
-    CITY_MARKERS=[...IRAQ_CITY_MARKERS,...buildWorldCapitalMarkers()];
+    // Keep province data only for the countries already defined by the existing world-visibility toggle.
+    if(adminGeo && Array.isArray(adminGeo.features)) adminGeo.features=adminGeo.features.filter(feature=>DEVELOPMENT_VISIBLE_COUNTRIES.has(feature.properties?.shapeGroup));
+    CITY_MARKERS=[...IRAQ_CITY_MARKERS,...buildWorldCapitalMarkers().filter(city=>DEVELOPMENT_VISIBLE_COUNTRIES.has(city.countryId))];
     if(!geo||!Array.isArray(geo.features)||!adminGeo||!Array.isArray(adminGeo.features)||!Array.isArray(window.WD_CAPITALS))
       throw new Error('بيانات خريطة العالم غير مكتملة');
   }).catch(error=>{worldDataLoadPromise=null;throw error;});
